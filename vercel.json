@@ -1,14 +1,1 @@
-{
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "cleanUrls": true,
-  "trailingSlash": true,
-  "headers": [
-    {
-      "source": "/(.*)",
-      "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" }
-      ]
-    }
-  ]
-}
+{"$schema":"https://openapi.vercel.sh/vercel.json","cleanUrls":true,"trailingSlash":true,"rewrites":[{"source":"/assets/:file","destination":"https://github.com/rogergrubb/christiansworld/releases/download/assets-v1/:file"},{"source":"/games/zombie-gunsmith","destination":"https://github.com/rogergrubb/christiansworld/releases/download/assets-v1/zombie-gunsmith.html"},{"source":"/games/zombie-gunsmith/","destination":"https://github.com/rogergrubb/christiansworld/releases/download/assets-v1/zombie-gunsmith.html"}],"headers":[{"source":"/((?!assets/|games/).*)","headers":[{"key":"X-Content-Type-Options","value":"nosniff"},{"key":"Referrer-Policy","value":"strict-origin-when-cross-origin"}]},{"source":"/assets/(.*)","headers":[{"key":"Content-Type","value":"image/webp"},{"key":"Cache-Control","value":"public, max-age=3600"}]},{"source":"/games/(.*)","headers":[{"key":"Content-Type","value":"text/html; charset=utf-8"}]}]}
