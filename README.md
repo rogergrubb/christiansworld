@@ -9,6 +9,7 @@ CNAME                            christiansworld.app  (GitHub Pages)
 vercel.json                      config if you host on Vercel instead
 assets/                          screenshots used on the front page
 games/
+  christians-world/              the 3D island game (index.html + js/)
   zombie-gunsmith/index.html     one file, the whole game
 ```
 

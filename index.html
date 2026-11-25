@@ -262,7 +262,42 @@
   <section class="sec">
     <div class="wrap">
       <h2>Playing now</h2>
-      <p class="sec-note">One game so far. There will be more.</p>
+      <p class="sec-note">Two games so far. There will be more.</p>
+
+      <article class="game">
+        <a class="game-shot" href="/games/christians-world/">
+          <img src="/assets/cw-heli.jpg" fetchpriority="high" decoding="async"
+               alt="A red helicopter flying between tall glass towers, with houses, a farm and the sea beyond.">
+        </a>
+        <div class="game-body">
+          <h3 class="game-title">Christian's World</h3>
+          <p class="game-copy">A whole island in 3D. Start at your house, then go anywhere: drive any car you find, take the speedboat out to Treasure Islet, or fly the helicopter over the city. Twenty-four missions: deliver pizzas, drive a taxi, win the Grand Prix, rescue kittens off a roof, dig up buried treasure.</p>
+          <p class="game-copy">Every mission pays out a tool or a blaster that you keep. A jetpack, rocket skates, a freeze ray, a thunder hammer. You'll need them, because the Professor's robots have escaped, and the biggest one is as tall as a house.</p>
+          <div class="tags">
+            <span class="tag">Open world</span>
+            <span class="tag">Drive, sail and fly</span>
+            <span class="tag">24 missions</span>
+            <span class="tag">23 tools and blasters</span>
+            <span class="tag">Day and night</span>
+            <span class="tag">Works on phones and controllers</span>
+          </div>
+          <div class="cta-row">
+            <a class="play" href="/games/christians-world/">Play</a>
+            <span class="secret">Your game saves itself. Press <b>G</b> for the toolbox.</span>
+          </div>
+        </div>
+      </article>
+
+      <div class="strip">
+        <figure>
+          <img src="/assets/cw-robots.jpg" loading="lazy" decoding="async"
+               alt="Christian in the park with a jetpack on his back, spraying a water blaster at a group of runaway robots.">
+          <figcaption>Bot Trouble: the robots are loose in the park</figcaption>
+        </figure>
+      </div>
+
+      <div style="height:34px"></div>
+
 
       <article class="game">
         <a class="game-shot" href="/games/zombie-gunsmith/">
@@ -335,5 +370,12 @@
   </div>
 </footer>
 
+<script>
+  for (const img of document.querySelectorAll('img')) {
+    const gone = () => { const box = img.closest('figure') || img.closest('.game-shot'); if (box) box.remove(); };
+    if (img.complete && img.naturalWidth === 0) { gone(); continue; }
+    img.addEventListener('error', gone); img.loading = 'eager';   // find out now, not when someone scrolls to it
+  }
+</script>
 </body>
 </html>
