@@ -90,7 +90,8 @@ export class Sound {
   boost() { this.noise(0.7, 0.28, 2400); this.tone(170, 0, 0.55, 'sawtooth', 0.1, 760); }
   // ---- the radio (see music.js) ----
   tune(i) { this.station = i; if (this.radio) { this.radio.tune(i); this.radio.setLevel(this.musicLevel); } }
-  music(playing, rush = 0) { if (this.radio) { this.radio.rush += (rush - this.radio.rush) * 0.05; this.radio.play(playing); this.radio.update(); } }
+  crescendo() { if (this.radio && this.radio.on) this.radio.crescendo(); }
+  music(playing, rush = 0, progress = 0) { if (this.radio) { this.radio.level = 1 + Math.round(20 * Math.min(1, progress)); this.radio.rush += (rush - this.radio.rush) * 0.05; this.radio.play(playing); this.radio.update(); } }
   setMusic(level) { this.musicLevel = level; if (this.radio) this.radio.setLevel(level); }
   // ---- background sounds: where Christian is and what time it is. Each level runs from 0 to 1. ----
   ambience(dt, a) {

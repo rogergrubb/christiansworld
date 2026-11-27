@@ -116,8 +116,11 @@ class Game {
     // objective beacon: a column of light and a ring on the ground
     this.beacon = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 24, 1, true), new THREE.MeshBasicMaterial({ color: 0xffd21f, transparent: true, opacity: 0.3, side: THREE.DoubleSide, depthWrite: false }));
     this.ring = new THREE.Mesh(new THREE.TorusGeometry(1, 0.06, 8, 40), new THREE.MeshBasicMaterial({ color: 0xffd21f }));
+    this.goalRing = new THREE.Mesh(this.ring.geometry, new THREE.MeshBasicMaterial({ color: 0xffd21f, depthTest: false, depthWrite: false })); this.goalRing.rotation.x = Math.PI / 2; this.goalRing.renderOrder = 20; this.goalRing.visible = false; this.scene.add(this.goalRing);
     this.ring.rotation.x = Math.PI / 2; this.beacon.visible = this.ring.visible = false; this.scene.add(this.beacon, this.ring);
-    this.hoop = new THREE.Mesh(new THREE.TorusGeometry(1, 0.06, 10, 44), new THREE.MeshBasicMaterial({ color: 0xffd21f, fog: false }));
+    // The flying hoops and the goal ring are drawn over everything else. They used to vanish behind the helicopter's windscreen,
+    // or behind a hill when seen from the ground; a goal he cannot see is no goal at all.
+    this.hoop = new THREE.Mesh(new THREE.TorusGeometry(1, 0.075, 10, 44), new THREE.MeshBasicMaterial({ color: 0xffd21f, fog: false, depthTest: false, depthWrite: false })); this.hoop.renderOrder = 20;
     this.hoop.visible = false; this.scene.add(this.hoop);
     // free-roam stars
     this.starMeshes = [];
@@ -711,8 +714,9 @@ class Game {
       this.beacon.visible = this.ring.visible = !t.quiet;   // no column of light on something nobody could miss
       this.beacon.position.set(t.x, gy + 45, t.z); this.beacon.scale.set(r, 90, r);
       const pulse = 1 + Math.sin(this.time * 4) * 0.08; this.ring.position.set(t.x, gy + 0.25, t.z); this.ring.scale.setScalar(r * pulse);
+      this.goalRing.visible = this.ring.visible && !!(pv && !pv.spec.wr && pv.spec.style === 'heli'); this.goalRing.position.copy(this.ring.position); this.goalRing.scale.copy(this.ring.scale);   // from the air, the ring on the ground shows through too
       this.beacon.material.opacity = clamp(Math.hypot(t.x - f.x, t.z - f.z) / 40, 0.1, 0.32);
-    } else this.beacon.visible = this.ring.visible = this.hoop.visible = false;
+    } else this.beacon.visible = this.ring.visible = this.hoop.visible = this.goalRing.visible = false;
 
     // sound
     snd.heli(!!pv && pv.spec.style === 'heli', pv ? pv.rotor || 0 : 0);
@@ -740,13 +744,13 @@ class Game {
     } else ui.pointer(null);
   }
 
-  // Music plays in anything you drive, and on foot whenever there is something to hurry for: a mission, or robots close by.
+  // House music plays the whole time he is playing, on foot or driving, and grows with every mission he finishes (see music.js).
   // `rush` tells the band how urgent things are: robots near, or a clock about to run out.
   updateSound(dt) {
     const snd = this.sound, play = this.mode === 'play', p = this.player, pv = play ? p.vehicle : null, f = this.focus(), w = this.world;
     let near = 0; if (play) for (const b of this.bots.list) if (!b.dead && Math.abs(b.x - f.x) < 45 && Math.abs(b.z - f.z) < 45) near++;
     const ms = this.missions, clock = ms.timer !== null && ms.timer !== undefined ? ms.timer : null, rush = !play ? 0 : Math.max(Math.min(1, near / 4), ms.active ? 0.35 : 0, clock !== null && clock < 30 ? 1 : clock !== null ? 0.6 : 0);
-    snd.music(play && !this.cine && (!!pv || rush > 0), rush);
+    snd.music(play && !this.cine, rush, this.state.done.length / Math.max(1, MISSIONS.length - 1));   // always on while he plays; every finished mission makes it bigger
     this.ui.radio(pv ? snd.radio ? snd.radio.name : 'Radio' : null);
     if (dt <= 0 || !play) return snd.ambience(dt, QUIET);
     const night = this.sky.night, r = w.shapeR(f.x, f.z), up = f.y - Math.max(w.groundAt(f.x, f.z), WATER_Y), town = Math.abs(f.x) < 320 && Math.abs(f.z) < 320, inside = pv && pv.spec.wr ? 0.55 : 1;

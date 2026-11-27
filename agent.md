@@ -35,7 +35,8 @@
 - Held swords clip through scenery. Accepted.
 
 ## 6. Debug History
-- Music "too relaxing" (Roger, 2026-11-26) → stations rewritten at 144–160 bpm, music now also plays on foot during missions and robot fights, and `Radio.rush` (0–1, set in `main.updateSound`) speeds the band up 14% and adds hats, snares and an alarm note. Do not bring back a slow station.
+- Music (Roger, 2026-11-26, asked three times): must be HOUSE, never peaceful. Now: four-on-the-floor kick, a sub bass throbbing at 8 / 10 / 12 beats a second (first / middle / last third of the missions), layers and loudness added with every mission finished (`Radio.level` 1–21 from `state.done.length`), a crescendo (`Radio.crescendo`) on each mission complete, and it plays the whole time, on foot too. `rush` still adds an alarm. Do not bring back a slow or sparse station.
+- Flying hoops and goal rings vanished behind the helicopter's windscreen and behind hills → hoop and a second goal ring are drawn with `depthTest: false`, `renderOrder` 20. The windscreen stays.
 - Bow/trident/glove "did nothing" right after the Time Baton → one shared cooldown → made cooldowns per item.
 - Display-stand models off-centre → `Box3.setFromObject` without `precise` → pass `true`.
 
