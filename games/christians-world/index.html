@@ -139,6 +139,21 @@ button.stk.tool:hover, .stk.tool.sel { outline: 4px solid var(--paint); outline-
 .stk.tool.relic u { background: var(--paint); color: var(--ink); font-size: 12px; }
 .stk.tool.relic.on { background: linear-gradient(160deg, #6a4a00, #2a2350); } .stk.tool.relic.on u { background: #fff; }
 #relic { background: rgba(8, 10, 22, .78); }
+/* Evolve: now, next, and the bars between them. */
+#evolve { background: rgba(8, 10, 22, .78); }
+#evolve .sign { width: min(820px, 100%); max-height: 100%; overflow-y: auto; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 14px 16px; text-align: center; background: linear-gradient(160deg, #241d4a, #0f142b); border-color: #ffd21f; box-shadow: 0 0 0 4px #0f142b, 0 10px 26px rgba(0, 0, 0, .5); }
+#evolve h2 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 28px; color: #ffd21f; } #evolve h2 span { font-family: var(--body); font-size: 15px; font-weight: 700; background: #ffd21f; color: var(--ink); border-radius: 999px; padding: 2px 12px; margin-left: 8px; vertical-align: middle; }
+#evo-pair { display: flex; align-items: center; gap: 12px; width: 100%; justify-content: center; } #evo-arrow { font-size: 40px; color: #fff; }
+.evo-card { flex: 1; max-width: 300px; min-width: 0; border-radius: 12px; padding: 8px; display: flex; flex-direction: column; align-items: center; gap: 2px; background: radial-gradient(circle at 50% 35%, #3c4a86, #10142b 75%); border: 2px solid rgba(255,255,255,.35); }
+.evo-card.next { background: radial-gradient(circle at 50% 35%, #7a4fd0, #1a1038 75%); border-color: #ffd21f; }
+.evo-card img { width: min(100%, 220px); aspect-ratio: 1; display: block; } .evo-card u { text-decoration: none; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #cfd6ff; }
+.evo-card b { font-family: var(--display); font-weight: 400; font-size: 22px; } .evo-card span { font-size: 14px; font-weight: 700; color: #9dff8a; } .evo-card span.pow { color: #ffb36b; } .evo-card em { font-size: 12px; color: #cfd6ff; }
+#evo-bars { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; } .evo-bar { position: relative; height: 26px; border-radius: 8px; background: rgba(255,255,255,.14); overflow: hidden; } .evo-bar.xp { grid-column: 1 / -1; height: 18px; }
+.evo-bar i { position: absolute; left: 0; top: 0; bottom: 0; background: #4fa8ff; } .evo-bar.win i { background: #f0a51f; } .evo-bar.xp i { background: #7c5cff; } .evo-bar span { position: relative; font-size: 13px; font-weight: 700; line-height: 26px; text-shadow: 0 1px 2px #000; } .evo-bar.xp span { line-height: 18px; font-size: 11px; }
+#evolve .row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; } #evo-own { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.evo-pick { font: inherit; font-size: 12.5px; font-weight: 700; color: #fff; background: rgba(255,255,255,.12); border: 2px solid rgba(255,255,255,.4); border-radius: 999px; padding: 3px 12px; cursor: pointer; } .evo-pick.on { background: #ffd21f; color: var(--ink); border-color: var(--ink); }
+#evo-help { font-size: 12.5px; color: #cfd6ff; }
+@media (max-height: 520px) { #evolve .sign { gap: 5px; padding: 6px 12px; } #evolve h2 { font-size: 18px; } .evo-card { padding: 4px; } .evo-card img { width: 76px; } .evo-card b { font-size: 16px; } .evo-card span { font-size: 12px; } .evo-card em, .evo-card u, .evo-bar.xp { display: none; } #evo-arrow { font-size: 24px; } #evolve .btn { padding: 5px 14px; font-size: 14px; box-shadow: 0 3px 0 var(--ink); } #evo-help { display: none; } }
 #relic .sign { width: min(980px, 100%); max-height: 100%; display: flex; gap: 16px; padding: 16px; background: linear-gradient(160deg, #241d4a, #0f142b); border-color: #ffd21f; box-shadow: 0 0 0 4px #0f142b, 0 10px 26px rgba(0, 0, 0, .5); }
 #relic-view { flex: 1.25; min-width: 0; min-height: 300px; height: min(70vh, 560px); border-radius: 12px; background: radial-gradient(circle at 50% 42%, #44539a, #10142b 72%); }
 #relic-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; text-align: left; overflow-y: auto; }
@@ -306,6 +321,7 @@ body.touch #topbtns { top: 196px; }
   <div id="topbtns">
     <button class="btn" id="btn-radio" type="button" hidden>&#9834; Radio</button>
     <button class="btn" id="btn-tools" type="button">Toolbox</button>
+    <button class="btn" id="btn-evolve" type="button">Evolve</button>
     <button class="btn" id="btn-book" type="button">Stickers</button>
     <button class="btn" id="btn-map" type="button">Map</button>
     <button class="btn" id="btn-pause" type="button">Menu</button>
@@ -367,7 +383,7 @@ body.touch #topbtns { top: 196px; }
       <span><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> or arrows: walk and drive</span>
       <span><kbd>E</kbd> hop in or out, talk, start a mission</span>
       <span><kbd>Space</kbd> jump, or handbrake in a car</span>
-      <span><kbd>F</kbd> use the tool in your hand &nbsp; <kbd>Q</kbd> next tool &nbsp; <kbd>G</kbd> toolbox</span>
+      <span><kbd>F</kbd> use the tool in your hand &nbsp; <kbd>Q</kbd> next tool &nbsp; <kbd>G</kbd> toolbox &nbsp; <kbd>X</kbd> evolve</span>
       <span><kbd>Shift</kbd> run &nbsp; <kbd>H</kbd> horn &nbsp; <kbd>M</kbd> map</span>
       <span><kbd>R</kbd> put the car back on the road &nbsp; <kbd>C</kbd> camera</span>
       <span><kbd>V</kbd> bring your car to you &nbsp; <kbd>B</kbd> sticker book &nbsp; <kbd>N</kbd> radio &nbsp; <kbd>T</kbd> photo</span>
@@ -387,6 +403,7 @@ body.touch #topbtns { top: 196px; }
       <button class="btn small" id="p-quit" type="button">Stop this mission</button>
       <button class="btn small" id="p-car" type="button">Bring my car here</button>
       <button class="btn small" id="p-tools" type="button">Toolbox</button>
+      <button class="btn small" id="p-evolve" type="button">Evolve</button>
       <button class="btn small" id="p-book" type="button">Sticker book</button>
       <button class="btn small" id="p-photo" type="button">Take a photo</button>
       <button class="btn small" id="p-sound" type="button">Sound: on</button>
@@ -430,6 +447,17 @@ body.touch #topbtns { top: 196px; }
     <div id="tools-grid"></div>
     <div id="tools-help"></div>
     <button class="btn go small" id="tools-close" type="button">Close</button>
+  </div>
+</div>
+
+<div id="evolve" class="overlay" hidden>
+  <div class="sign" role="dialog" aria-label="Evolve">
+    <h2>Evolve <span id="evo-level"></span></h2>
+    <div id="evo-pair"><div class="evo-card" id="evo-cur"></div><div id="evo-arrow" aria-hidden="true">➜</div><div class="evo-card next" id="evo-next"></div></div>
+    <div id="evo-bars"></div>
+    <div class="row"><button class="btn go" id="evo-act" type="button"></button><button class="btn small" id="evo-close" type="button">Close</button></div>
+    <div id="evo-own"></div>
+    <div id="evo-help"></div>
   </div>
 </div>
 

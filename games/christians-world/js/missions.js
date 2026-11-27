@@ -649,7 +649,7 @@ export class Missions {
     const g = this.g, def = this.active, first = !this.isDone(def.id);
     const time = this.elapsed, place = this.place || 1, pay = def.pay ? def.pay(this) : def.reward;
     this.cleanup();
-    if (first) g.state.done.push(def.id);
+    if (first) { g.state.done.push(def.id); g.evo.gain(100); }
     g.addMoney(pay);
     // the tool or blaster this mission pays out, the first time it is won
     const won = gearFrom(def.id) ? g.gear.grant(gearFrom(def.id).id) : null;

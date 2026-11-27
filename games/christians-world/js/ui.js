@@ -3,6 +3,7 @@ import { MAP_SCALE, POI } from './world.js';
 import { fmtTime, fmtDist } from './util.js';
 import { GEAR, useText } from './gear.js';
 import { RELICS, Vault } from './relics.js';
+import { FORMS, xpFor } from './evolve.js';
 
 const $ = (id) => document.getElementById(id);
 const PLACES = [
@@ -38,7 +39,9 @@ export class UI {
     $('dlg-alt').addEventListener('click', () => this.answer('alt'));
     $('book-close').addEventListener('click', () => this.book(false));
     $('tools-close').addEventListener('click', () => this.tools(false));
-    this.vault = new Vault(); this.relicId = null; this.thumbRun = 0;
+    this.vault = new Vault(); this.relicId = null; this.thumbRun = 0; this.evoOpen = false;
+    $('evo-close').addEventListener('click', () => this.tools(false)); $('evo-act').addEventListener('click', () => this.evoAct());
+    $('btn-evolve').addEventListener('click', () => { if (this.g.mode === 'play' && !this.g.paused && !this.dialogOpen && !this.mapOpen && !this.bookOpen && !this.toolsOpen && !this.g.cine) this.evolve(true); });
     $('relic-back').addEventListener('click', () => this.relic(null)); $('relic-act').addEventListener('click', () => this.relicAct());
     $('btn-tools').addEventListener('click', () => { if (this.g.mode === 'play' && !this.g.paused && !this.dialogOpen && !this.mapOpen && !this.bookOpen && !this.g.cine) this.tools(true); });
     $('photo-back').addEventListener('click', () => { $('photo-view').hidden = true; $('view').focus(); });
@@ -142,7 +145,7 @@ export class UI {
   }
   // The toolbox: every tool and blaster, earned or still to win. Anything that is held can be picked here.
   tools(on) {
-    this.toolsOpen = on; $('tools').hidden = !on; if (!on) { this.relicId = null; $('relic').hidden = true; this.vault.hide(); $('view').focus(); return; }
+    this.toolsOpen = on; $('tools').hidden = !on; this.evoOpen = false; $('evolve').hidden = true; if (!on) { this.relicId = null; $('relic').hidden = true; this.vault.hide(); $('view').focus(); return; }
     const g = this.g, grid = $('tools-grid'), how = g.words(); let have = 0; grid.textContent = ''; this.toolCards = [];
     for (const kind of ['tool', 'blaster']) {
       const h = document.createElement('h3'); h.textContent = kind === 'tool' ? 'Tools' : 'Blasters'; grid.append(h);
@@ -178,6 +181,30 @@ export class UI {
     $('tools-help').textContent = !this.toolCards.length ? 'Finish missions to fill the toolbox.' : how === 'touch' ? 'Tap something to hold it. The round tool button uses it.' : how === 'pad' ? 'Move with the stick and press A to hold something. RB uses it, LB swaps.' : 'Click something to hold it. F uses it, Q swaps to the next one.';
     this.toolMark();
   }
+  // Evolve: the form he has, the form that comes next, and how far he is from it. It borrows the toolbox's place in the
+  // game (the world waits, the same keys close it), so while it is open toolsOpen is true and the toolbox itself is hidden.
+  evolve(on) {
+    if (!on) return this.tools(false);
+    this.toolsOpen = true; this.evoOpen = true; $('tools').hidden = true; $('evolve').hidden = false; this.thumbRun++; this.evoPaint();
+  }
+  evoPaint() {
+    const g = this.g, e = g.evo, s = e.s, cur = e.form, nx = e.next, lvl = e.level;
+    const card = (el, f, tier, tag) => { el.textContent = ''; if (!f) { const b = document.createElement('b'); b.textContent = 'Top form reached'; el.append(b); return; }
+      const t = document.createElement('u'); t.textContent = tag; const im = new Image(); im.alt = ''; im.src = this.vault.thumb('form' + tier, 320);
+      const b = document.createElement('b'); b.textContent = f.name; const a = document.createElement('span'); a.textContent = `Robot coins ×${f.coin}`; const c = document.createElement('span'); c.className = 'pow'; c.textContent = `Power ×${f.dmg}`; const q = document.createElement('em'); q.textContent = f.tale;
+      el.append(t, im, b, a, c, q); };
+    card($('evo-cur'), cur, s.tier, `Now · form ${s.tier}`); card($('evo-next'), nx, s.tier + 1, `Next · form ${s.tier + 1}`);
+    $('evo-level').textContent = `Level ${lvl}`;
+    const bars = $('evo-bars'); bars.textContent = '';
+    const bar = (label, have, need, cls) => { const d = document.createElement('div'); d.className = 'evo-bar ' + cls; const f = document.createElement('i'); f.style.width = Math.min(100, (have / need) * 100) + '%'; const t = document.createElement('span'); t.textContent = `${label}  ${Math.min(have, need)} / ${need}`; d.append(f, t); bars.append(d); };
+    if (nx) { bar('⭐ Level', lvl, nx.level, 'lv'); bar('🏆 Robots stopped', e.wins, nx.wins, 'win'); }
+    const into = s.xp - xpFor(lvl), span = xpFor(lvl + 1) - xpFor(lvl); bar(`Points to level ${lvl + 1}`, into, span, 'xp');
+    const act = $('evo-act'); act.hidden = !nx; act.disabled = !e.ready(); act.textContent = !nx ? '' : e.ready() ? `Evolve into ${nx.name}!` : lvl < nx.level ? `Need level ${nx.level}` : `Need ${nx.wins} robots stopped`;
+    const own = $('evo-own'); own.textContent = '';
+    for (let i = 0; i <= s.tier; i++) { const b = document.createElement('button'); b.type = 'button'; b.className = 'evo-pick' + (i === s.wear ? ' on' : ''); b.textContent = FORMS[i].name; b.addEventListener('click', () => { e.wear(i); this.evoPaint(); }); own.append(b); }
+    $('evo-help').textContent = s.tier ? `Wear any form you have unlocked. Your ×${cur.coin} coins and ×${cur.dmg} power stay.` : 'Stop robots and finish missions to level up.';
+  }
+  evoAct() { const e = this.g.evo; if (!e.evolve()) return; const f = e.form; this.tools(false); this.banner(`Evolved: ${f.name}!`, `Robot coins ×${f.coin} · Power ×${f.dmg}`); }
   // The display stand for one piece of legendary gear: a turntable, what it does, and Buy or Hold.
   relic(id) {
     this.relicId = id; $('relic').hidden = !id;
@@ -200,6 +227,7 @@ export class UI {
   toolMark() { this.toolCards.forEach((c, k) => c.el.classList.toggle('sel', k === this.toolSel)); const c = this.toolCards[this.toolSel]; if (c) c.el.scrollIntoView({ block: 'nearest' }); }
   // Keys and controller on the toolbox screen.
   toolsKeys(inp) {
+    if (this.evoOpen) { if (inp.pressed('KeyX', 'KeyG', 'Escape', 'KeyB') || (inp.pad.on && inp.pressed('ShiftLeft'))) this.tools(false); else if (inp.pressed('Enter', 'KeyE', 'Space', 'KeyF')) this.evoAct(); else { const mv = inp.nav(); if (mv && (mv[0] || mv[1])) { const e = this.g.evo; e.wear(Math.max(0, Math.min(e.s.tier, e.s.wear + (mv[0] || mv[1])))); this.evoPaint(); } } return; }
     if (this.relicId) { if (inp.pressed('KeyG', 'Escape', 'KeyB') || (inp.pad.on && inp.pressed('ShiftLeft'))) this.relic(null); else if (inp.pressed('Enter', 'KeyE', 'Space', 'KeyF')) this.relicAct(); return; }
     if (inp.pressed('KeyG', 'Escape', 'KeyB') || (inp.pad.on && inp.pressed('ShiftLeft'))) return this.tools(false);
     const n = this.toolCards.length; if (!n) return;

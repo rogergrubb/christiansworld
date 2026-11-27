@@ -321,11 +321,14 @@ const BUILD = {
 };
 
 // One relic, ready to hold or to show. Built when first wanted, never before.
-export function buildRelic(id) { const g = BUILD[id](); g.userData.id = id; return g; }
+// Other modules (the evolution armour) add things to show on the display stand here, and borrow the modelling kit.
+export const EXTRA = {};
+export const KIT = { T, M, std, phys, put, lathe, ring, ball, rod, tube, slab, halo, around, V, TAU };
+export function buildRelic(id) { const g = (BUILD[id] || EXTRA[id])(); g.userData.id = id; return g; }
 
 // ------------------------------------------------------------------ the display stand
 // A small renderer of its own, used for the turntable in the Toolbox and for the pictures on the cards.
-const POSE = { goo: [0.5, -0.5], katana: [0.4, -0.55], baton: [0.2, -0.4], bow: [0.45, 0.5, -Math.PI / 2], trident: [0.2, -0.45], glove: [0.9, -0.1], meteor: [0.2, -0.4], smasher: [1.0, -0.75] };
+export const POSE = { goo: [0.5, -0.5], katana: [0.4, -0.55], baton: [0.2, -0.4], bow: [0.45, 0.5, -Math.PI / 2], trident: [0.2, -0.45], glove: [0.9, -0.1], meteor: [0.2, -0.4], smasher: [1.0, -0.75] };
 export class Vault {
   constructor() { this.items = {}; this.thumbs = {}; this.cur = null; this.t = 0; this.spin = 0; this.raf = 0; this.drag = null; }
   init() {

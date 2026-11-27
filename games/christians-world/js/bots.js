@@ -135,6 +135,7 @@ export class Bots {
     else if (fx === 'bubble') { if (k.boss || b.kind === 'brute') dmg = 0.5; else if (b.bub <= 0) { b.bub = 3; b.floor = b.y - (b.alt || 0); g.sound.pop(); } }
     else if (fx === 'stun') b.stun = Math.max(b.stun, k.boss ? 1.4 : 3.2);
     else if (fx === 'paint') { b.tint = col; b.blind = 4; }
+    if (dmg > 0) dmg *= g.evo.dmg;                                   // evolved forms hit harder
     if (b.ice > 0 && dmg >= 1 && fx !== 'freeze') dmg = 99;          // frozen robots shatter
     if (k.boss && b.phase === 'down') dmg *= 2;
     if (k.boss && dmg > 20) dmg = 20;
@@ -159,7 +160,7 @@ export class Bots {
   zonk(b) {
     if (b.dead) return;
     const g = this.g, fx = g.fx, k = b.k, y = b.y + k.h * 0.5;
-    b.dead = true; this.dirty = true; g.state.stats.bots++;
+    b.dead = true; this.dirty = true; g.state.stats.bots++; g.evo.gain(k.boss ? 200 : 10);
     fx.burst(b.x, y, b.z, k.boss ? 60 : 16, k.boss ? 12 : 6, 0.6, 0.16, 0.05, 1, 0.85, 0.3, 1, 14, 1.2);
     fx.burst(b.x, y, b.z, k.boss ? 26 : 8, k.boss ? 6 : 2.5, 1.1, 0.7, k.boss ? 5 : 2.2, 0.55, 0.57, 0.6, 0.55, 0, 0.5);
     g.burst(b.x, y + 0.4, b.z, k.boss ? 320 : 26, k.boss ? 14 : 5);
@@ -354,7 +355,7 @@ export class Bots {
       if (c.t > 0.5 && d < reach) c.pull = true;
       if (c.pull) {
         const v = 18 * dt; c.x += (dx / d) * Math.min(v, d); c.y += (dy / d) * Math.min(v, d); c.z += (dz / d) * Math.min(v, d);
-        if (d < 1) { c.t = 1e9; gone = true; g.addMoney(5); g.state.stats.coins++; if (this.coinT <= 0) { this.coinT = 0.07; g.sound.coin(); } }
+        if (d < 1) { c.t = 1e9; gone = true; g.addMoney(5 * g.evo.coin); g.state.stats.coins++; if (this.coinT <= 0) { this.coinT = 0.07; g.sound.coin(); } }
         continue;
       }
       const gy = Math.max(w.groundAt(c.x, c.z) + w.curbAt(c.x, c.z), WATER_Y) + 0.4;

@@ -11,10 +11,11 @@
 - No copied characters, logos or named items from films, comics or other games. Christian's ideas get original designs and names.
 
 ## 3. Current State (2026-11-26)
+- Evolving added (`js/evolve.js`): 12 armour forms, levels from points, wins = robots stopped. Robot coins and hit power multiply per form. Tested end to end in headless Chrome.
+- Pushed to GitHub main; christiansworld.app serves it.
 - Legendary gear added: 8 high-detail items in `js/relics.js`, bought with mission money in the Toolbox.
 - Tested in headless Chrome: all 8 buy, equip, show in hand and affect robots. No console errors.
 - Live play copy: claude.ai artifact "Christian's World" (slug 44e49ac2-23fc-4b27-bcfd-dc80b2840a7f), republished with this change.
-- NOT yet on GitHub / christiansworld.app: this session could read the repo but not push.
 - Repo is still PUBLIC. Roger wants it private (GitHub Pages on a private repo needs a paid plan; Vercel does not).
 
 ## 4. Architecture & Design Decisions
@@ -26,6 +27,9 @@
 - Cooldowns are per item (`Toolbox.cds`), so a 6 s wait on one item never blocks the next.
 
 ## 5. Known Issues & Landmines
+- The Evolve screen borrows `ui.toolsOpen` so the world pauses and keys route through `toolsKeys`. `ui.tools(false)` closes Evolve too.
+- `state.evo` is created lazily with credit for old saves (10 points a robot, 100 a mission). Never reset it on load.
+- This cannot be "uploaded to Roblox": Roblox runs Luau in Roblox Studio, not web pages. A Roblox version is a separate rebuild.
 - `progress.js` counts blasters by `kind === 'blaster'`. Never go back to `GEAR.length - TOOLS`, or relics break the "Full Toolbox" sticker.
 - `ExtrudeGeometry` bevels fold over at needle-sharp tips: blunt a blade's outline before the last 4%.
 - Held swords clip through scenery. Accepted.
@@ -43,9 +47,9 @@
 
 ## 9. Open Questions
 - Christian asked for a Venom sword, the Hadron Enforcer and the Time Stick by name. Those are Marvel's; the game has original stand-ins (Midnight Goo Blade, Atom Smasher, Time Baton). More of his ideas are welcome as originals.
-- Does he want a Roblox-style "evolutions" ladder (levels, wins, multipliers) like the game in his screenshots?
+- Roblox version: wanted, not started. Needs Roblox Studio on Roger's PC and a decision on whose account publishes.
 
 ## 10. Next Actions
-1. Push this commit to GitHub (needs a session with push access) and confirm christiansworld.app updates.
+1. Decide on the Roblox rebuild (see Open Questions).
 2. Make the repo private and move hosting to Vercel if Pages stops serving.
 3. More legendary gear, auras and titles if Christian wants them.

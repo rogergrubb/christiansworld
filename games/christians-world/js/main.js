@@ -14,6 +14,7 @@ import { NightLights, Particles, SkidMarks, glowTexture } from './fx.js';
 import { Progress, PLACES, STICKERS, freshState, mergeState } from './progress.js';
 import { Crowd, Birds, Animals, Pet } from './life.js';
 import { Toolbox, TREASURE, gearFrom } from './gear.js';
+import { Evo } from './evolve.js';
 import { Bots, Fire } from './bots.js';
 import { clamp, damp, angDiff, rng, segDist, smoothstep } from './util.js';
 
@@ -75,7 +76,7 @@ class Game {
 
     this.player = new Player(this.scene);
     // the toolbox, the robots it is for, small fires, buried treasure
-    this.gear = new Toolbox(this); this.bots = new Bots(this); this.fires = []; this.spots = []; this.dizzy = 0; this.fireWas = false;
+    this.gear = new Toolbox(this); this.evo = new Evo(this); this.bots = new Bots(this); this.fires = []; this.spots = []; this.dizzy = 0; this.fireWas = false;
     this.vehicles = new Map(); this.vlist = [];
     const add = (id, type, s, color) => { const v = createVehicle(id, type, s.x, s.z, s.h, this.world, this.scene, color); this.vehicles.set(id, v); this.vlist.push(v); return v; };
     this.addVehicle = add;
@@ -376,6 +377,7 @@ class Game {
     $('btn-radio').addEventListener('click', () => { if (this.mode === 'play' && this.player.vehicle) this.nextStation(); });
     $('p-book').addEventListener('click', () => { this.pause(false); this.ui.book(true); });
     $('p-tools').addEventListener('click', () => { this.pause(false); this.ui.tools(true); });
+    $('p-evolve').addEventListener('click', () => { this.pause(false); this.ui.evolve(true); });
     $('p-photo').addEventListener('click', () => { this.pause(false); this.photoMode(true); });
     for (const [id, key] of [['s-music', 'music'], ['s-sfx', 'sfx'], ['s-quality', 'quality'], ['s-time', 'time']]) $(id).addEventListener('input', (e) => { this.settings[key] = e.target.type === 'range' ? +e.target.value : e.target.value; this.applySettings(); });
     $('ph-done').addEventListener('click', () => this.photoMode(false));
@@ -416,6 +418,7 @@ class Game {
   continueGame() { const s = this.loadSave(); if (s) this.state = mergeState(s); this.sky.t = Number.isFinite(this.state.time) ? this.state.time : 0.36; this.sky.apply(); this.begin(false); }
   begin(fresh) {
     this.resetWorld(); this.mode = 'play'; this.paused = false;
+    this.evo.told = false; this.evo.dress();
     this.gear.catchUp();   // a save from before the toolbox gets what its finished missions pay out
     this.timeSet = null; this.applySettings(false); this.sound.setOn(this.state.sound); this.sound.tune(Number.isInteger(this.state.radio) ? this.state.radio : 0); this.ui.title(false); this.canvas.focus();
     // A new game opens with a flight over the island. Tests step the clock by hand and skip it.
@@ -561,6 +564,7 @@ class Game {
         else if (inp.pressed('KeyM')) ui.map(true);
         else if (inp.pressed('KeyB')) ui.book(true);
         else if (inp.pressed('KeyG')) ui.tools(true);
+        else if (inp.pressed('KeyX')) ui.evolve(true);
         else if (inp.pressed('KeyT')) this.photoMode(true);
         else this.simulate(dt, inp.read());
       }
@@ -593,7 +597,7 @@ class Game {
     let drowned = false; const hold = ms.frozen;
     // the tool in hand (F, or the right trigger on foot), and what the worn tools change about walking
     const fire = !!inp.fire || (!p.vehicle && !!inp.rt), mod = this.gear.update(dt, { fire, pressed: fire && !this.fireWas }, !p.vehicle);
-    this.fireWas = fire; this.dizzy = Math.max(0, this.dizzy - dt);
+    this.fireWas = fire; this.dizzy = Math.max(0, this.dizzy - dt); this.evo.update();
     if (p.vehicle && p.vehicle.spec.wr) this.turbo(p.vehicle, dt);
     for (let k = 0; k < n; k++) {
       const pv = p.vehicle;
