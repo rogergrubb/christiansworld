@@ -739,10 +739,13 @@ class Game {
     } else ui.pointer(null);
   }
 
-  // The radio plays in anything you drive; the island hums along underneath.
+  // Music plays in anything you drive, and on foot whenever there is something to hurry for: a mission, or robots close by.
+  // `rush` tells the band how urgent things are: robots near, or a clock about to run out.
   updateSound(dt) {
     const snd = this.sound, play = this.mode === 'play', p = this.player, pv = play ? p.vehicle : null, f = this.focus(), w = this.world;
-    snd.music(!!pv && !this.cine);
+    let near = 0; if (play) for (const b of this.bots.list) if (!b.dead && Math.abs(b.x - f.x) < 45 && Math.abs(b.z - f.z) < 45) near++;
+    const ms = this.missions, clock = ms.timer !== null && ms.timer !== undefined ? ms.timer : null, rush = !play ? 0 : Math.max(Math.min(1, near / 4), ms.active ? 0.35 : 0, clock !== null && clock < 30 ? 1 : clock !== null ? 0.6 : 0);
+    snd.music(play && !this.cine && (!!pv || rush > 0), rush);
     this.ui.radio(pv ? snd.radio ? snd.radio.name : 'Radio' : null);
     if (dt <= 0 || !play) return snd.ambience(dt, QUIET);
     const night = this.sky.night, r = w.shapeR(f.x, f.z), up = f.y - Math.max(w.groundAt(f.x, f.z), WATER_Y), town = Math.abs(f.x) < 320 && Math.abs(f.z) < 320, inside = pv && pv.spec.wr ? 0.55 : 1;

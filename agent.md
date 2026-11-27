@@ -35,6 +35,7 @@
 - Held swords clip through scenery. Accepted.
 
 ## 6. Debug History
+- Music "too relaxing" (Roger, 2026-11-26) → stations rewritten at 144–160 bpm, music now also plays on foot during missions and robot fights, and `Radio.rush` (0–1, set in `main.updateSound`) speeds the band up 14% and adds hats, snares and an alarm note. Do not bring back a slow station.
 - Bow/trident/glove "did nothing" right after the Time Baton → one shared cooldown → made cooldowns per item.
 - Display-stand models off-centre → `Box3.setFromObject` without `precise` → pass `true`.
 

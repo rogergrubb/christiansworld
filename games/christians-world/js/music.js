@@ -4,23 +4,26 @@ import { rng } from './util.js';
 
 const MAJOR = [0, 2, 4, 5, 7, 9, 11], MINOR = [0, 2, 3, 5, 7, 8, 10];
 const hz = (midi) => 440 * Math.pow(2, (midi - 69) / 12);
-const LOUD = 3.6;   // the recipes below are written quietly; this brings the mix up to sit just under the engine
+const LOUD = 2.9;   // the recipes below are written quietly; this brings the mix up to sit just under the engine
 
+// Every station is written to push: quick tempos, a kick on every beat, basslines that never sit still.
+// On top of that the game sets `rush` (0 to 1) when robots are close or a clock is running out, and the band speeds up,
+// the hats double and an alarm note starts to pulse.
 export const STATIONS = [
   {
-    name: 'Sunny FM', bpm: 118, key: 60, scale: MAJOR, chords: [0, 4, 5, 3], swing: 0,
-    lead: { type: 'square', vol: 0.05, len: 0.9, oct: 12, cut: 2600 }, arp: { type: 'triangle', vol: 0.045, every: 2, oct: 0 }, bass: { type: 'triangle', vol: 0.11, pat: [1, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0] },
-    kick: [1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0], snare: [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0], hat: [1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 1], busy: 0.72,
+    name: 'Rush Hour', bpm: 144, key: 62, scale: MAJOR, chords: [0, 5, 3, 4], swing: 0,
+    lead: { type: 'square', vol: 0.05, len: 0.6, oct: 12, cut: 3000 }, arp: { type: 'square', vol: 0.03, every: 1, oct: 12 }, bass: { type: 'sawtooth', vol: 0.09, cut: 600, pat: [1, 0, 1, 1, 0, 1, 1, 0, 1, 0, 1, 1, 0, 1, 1, 1] },
+    kick: [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1], snare: [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0], hat: [1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1], busy: 0.85,
   },
   {
-    name: 'Island Breeze', bpm: 92, key: 57, scale: MAJOR, chords: [0, 5, 3, 4], swing: 0.14,
-    lead: { type: 'sine', vol: 0.085, len: 0.5, oct: 12, bell: true }, arp: { type: 'sine', vol: 0.05, every: 3, oct: 12, bell: true }, bass: { type: 'sine', vol: 0.13, pat: [1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0] }, pad: 0.028,
-    kick: [1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0], snare: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0], hat: [0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0], busy: 0.5,
+    name: 'Red Alert', bpm: 160, key: 52, scale: MINOR, chords: [0, 0, 5, 6], swing: 0,
+    lead: { type: 'sawtooth', vol: 0.045, len: 0.55, oct: 12, cut: 2400 }, arp: { type: 'square', vol: 0.032, every: 1, oct: 12 }, bass: { type: 'sawtooth', vol: 0.1, cut: 480, pat: [1, 1, 5, 1, 1, 1, 5, 1, 1, 1, 5, 1, 1, 5, 1, 5] },
+    kick: [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0], snare: [0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1], hat: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], busy: 0.9, alarm: true,
   },
   {
-    name: 'Turbo Beats', bpm: 132, key: 57, scale: MINOR, chords: [0, 5, 2, 6], swing: 0,
-    lead: { type: 'sawtooth', vol: 0.04, len: 0.8, oct: 12, cut: 1900 }, arp: { type: 'square', vol: 0.03, every: 1, oct: 12 }, bass: { type: 'sawtooth', vol: 0.085, cut: 520, pat: [1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1] },
-    kick: [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0], snare: [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1], hat: [0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0], busy: 0.62,
+    name: 'Turbo Beats', bpm: 152, key: 57, scale: MINOR, chords: [0, 5, 2, 6], swing: 0,
+    lead: { type: 'sawtooth', vol: 0.04, len: 0.7, oct: 12, cut: 2100 }, arp: { type: 'square', vol: 0.03, every: 1, oct: 12 }, bass: { type: 'sawtooth', vol: 0.09, cut: 540, pat: [1, 0, 1, 1, 1, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1] },
+    kick: [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 1], snare: [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 1], hat: [1, 0, 1, 0, 1, 0, 1, 1, 1, 0, 1, 0, 1, 1, 1, 1], busy: 0.78,
   },
 ];
 
@@ -29,7 +32,7 @@ export class Radio {
   constructor(ctx, out, noise) {
     this.ctx = ctx; this.noise = noise;
     this.gain = ctx.createGain(); this.gain.gain.value = 0; this.gain.connect(out);
-    this.level = 0.8; this.station = -1; this.on = false; this.t = 0; this.step = 0; this.notes = 0; this.shift = 0; this.phrases = new Map();
+    this.level = 0.8; this.station = -1; this.on = false; this.t = 0; this.step = 0; this.notes = 0; this.shift = 0; this.phrases = new Map(); this.rush = 0;
   }
   get name() { return this.station < 0 ? 'Radio off' : STATIONS[this.station].name; }
   tune(i) { this.station = i; this.step = 0; this.t = 0; this.phrases = new Map(); }
@@ -67,20 +70,23 @@ export class Radio {
   // Schedule everything that starts before `until` (in the context's seconds). Call often, a little ahead.
   schedule(until) {
     if (this.station < 0) return;
-    const st = STATIONS[this.station], sixteenth = 60 / st.bpm / 4;
+    const st = STATIONS[this.station], rush = this.rush, sixteenth = 60 / (st.bpm * (1 + 0.14 * rush)) / 4;
     if (!this.t || this.t < this.ctx.currentTime - 0.5) this.t = this.ctx.currentTime + 0.06;
     while (this.t < until) {
       const s = this.step % 16, bar = (this.step / 16) | 0, sect = (bar / 8) | 0, deg = st.chords[bar % st.chords.length];
       this.shift = (sect % 6) === 4 ? 2 : 0;                       // now and then the whole tune steps up, then comes home
-      const quiet = sect % 4 === 3 && bar % 8 < 4;                 // a breather: drums and bass only
+      const quiet = rush < 0.3 && sect % 4 === 3 && bar % 8 < 2;   // a short breather, never while things are tense
       const at = this.t + (s % 2 ? st.swing * sixteenth : 0);
       if (st.kick[s]) this.kick(at);
       if (st.snare[s]) this.hit(at, 0.11, 0.1, 'highpass', 1600);
-      if (st.hat[s]) this.hit(at, 0.035, 0.035, 'highpass', 7000);
+      if (st.hat[s] || rush > 0.5) this.hit(at, 0.03, 0.026 + rush * 0.012, 'highpass', 7000);
+      if (rush > 0.6 && s % 4 === 2) this.hit(at, 0.09, 0.05, 'highpass', 1900);                                  // danger: a snare between every beat
+      if ((st.alarm || rush > 0.4) && s % 8 === 0) this.note(this.pitch(st, s === 0 ? 7 : 6, 12), at, sixteenth * 3, 0.022 + rush * 0.03, 'square', { cut: 3200 });   // the alarm
+      if (s === 12 && bar % 4 === 3) for (let k = 0; k < 4; k++) this.hit(at + k * sixteenth, 0.07, 0.035 + k * 0.012, 'highpass', 1500);   // a drum roll into every fourth bar
       if (st.bass.pat[s]) this.note(this.pitch(st, deg, -24) * (st.bass.pat[s] === 5 ? 1.5 : 1), at, sixteenth * 1.9, st.bass.vol, st.bass.type, { cut: st.bass.cut });
       if (st.pad && s === 0) for (const d of [deg, deg + 2, deg + 4]) this.note(this.pitch(st, d), at, sixteenth * 15.5, st.pad, 'triangle', { slow: true });
       if (!quiet && s % st.arp.every === 0 && (st.arp.every > 1 || s % 4 !== 0)) this.note(this.pitch(st, deg + [0, 2, 4, 2, 7, 4, 2, 4][(s / st.arp.every) & 7], st.arp.oct), at, sixteenth * 1.4, st.arp.vol, st.arp.type, { bell: st.arp.bell });
-      if (!quiet && s % 2 === 0 && sect % 4 !== 0) {
+      if (!quiet && s % 2 === 0 && (sect % 4 !== 0 || bar % 8 >= 4)) {
         // the tune: phrase A twice, B once, A again
         const id = [0, 0, 1, 0][((bar % 8) / 2) | 0] + (sect % 2) * 2, n = this.phrase(st, id * 2 + (bar % 2), deg)[s / 2];
         if (n !== null) this.note(this.pitch(st, n, st.lead.oct - 12), at, sixteenth * 2 * st.lead.len + 0.05, st.lead.vol, st.lead.type, { cut: st.lead.cut, bell: st.lead.bell });
