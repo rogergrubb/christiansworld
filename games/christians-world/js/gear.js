@@ -4,6 +4,7 @@
 import * as THREE from './three.js';
 import { Batch, GEO, WATER_Y } from './world.js';
 import { clamp, angDiff } from './util.js';
+import { RELICS, buildRelic } from './relics.js';
 
 const hex = (c) => [((c >> 16) & 255) / 255, ((c >> 8) & 255) / 255, (c & 255) / 255];
 const PAINTS = [0xff5fa2, 0x2d6cdf, 0xffd21f, 0x1f8a70, 0xff7a1a, 0x8e44ad, 0x1fb7c9, 0xe23b2e, 0x7cc75c];
@@ -35,6 +36,8 @@ export const GEAR = [
   { id: 'zap', icon: '⚡', name: 'Zap Pulse', kind: 'blaster', from: 'drones', use: 'A ring of sparks. Every robot around you drops.', cool: 4.5, radius: 10, dmg: 2, color: 0xffd21f, fx: 'stun' },
   { id: 'laser', icon: '☄️', name: 'Laser Blaster', kind: 'blaster', from: 'lighthouse', use: 'Pew pew pew. Fast, far and dead straight.', rate: 6, speed: 85, grav: 0, spread: 0.004, dmg: 1.5, reach: 70, size: 0.13, color: 0xff2a2a, fx: 'hit', long: 6 },
   { id: 'hammer', icon: '🔨', name: 'Thunder Hammer', kind: 'blaster', from: 'mega', use: 'BOOM. Sends every robot near you flying.', cool: 0.75, radius: 4.6, dmg: 3, color: 0x8e44ad, fx: 'knock', shape: 'hammer' },
+  // Legendary gear is bought, not won: see relics.js for what each one is and how it looks.
+  ...RELICS,
 ];
 export const gearById = (id) => GEAR.find((g) => g.id === id);
 export const gearFrom = (missionId) => GEAR.find((g) => g.from === missionId);
@@ -120,6 +123,7 @@ export class Toolbox {
     this._c = { x: 0, z: 0, nx: 0, nz: 0 }; this._d = { x: 0, y: 0, z: 0 }; this.mod = { run: 1, jump: 1, jet: false };
     // what is in Christian's hand: one shape at a time
     const arm = game.player.mesh.userData.armR; this.shapes = {};
+    this.arm = arm; this.relics = {}; this.held = null; this.hot = 0; this.swingLen = 0.28;   // legendary gear: built the first time it is held
     for (const [name, sh] of Object.entries(SHAPES)) { const b = new Batch(); sh.build(b); const m = new THREE.Mesh(b.geometry(), new THREE.MeshLambertMaterial({ vertexColors: true })); m.visible = false; arm.add(m); this.shapes[name] = m; }
     // the jetpack on his back
     const jp = new Batch(); for (const s of [-1, 1]) { jp.add(GEO.cyl, s * 0.15, 1.16, -0.29, 0.11, 0.5, 0.11, 0xcfd6dc); jp.add(GEO.cone, s * 0.15, 0.84, -0.29, 0.1, 0.16, 0.1, 0xe23b2e, 0, Math.PI); } jp.box(0, 1.2, -0.24, 0.42, 0.3, 0.08, 0x39414c);
@@ -130,6 +134,9 @@ export class Toolbox {
     this.bob = new THREE.Mesh(GEO.sph, new THREE.MeshBasicMaterial({ color: 0xe23b2e })); this.bob.scale.setScalar(0.22); this.bob.visible = false; game.scene.add(this.bob);
   }
   get owned() { return this.g.state.gear; }
+  // Each thing cools down by itself, so a long wait on one never locks the next one he picks up.
+  get cool() { return (this.cds && this.cds[this.g.state.equip]) || 0; }
+  set cool(v) { (this.cds || (this.cds = {}))[this.g.state.equip] = v; }
   has(id) { return this.owned.includes(id) || this.lent === id; }
   // everything that can be held, in toolbox order
   get hands() { return GEAR.filter((q) => !q.worn && this.has(q.id)); }
@@ -139,8 +146,26 @@ export class Toolbox {
     const it = gearById(id), g = this.g; if (!it || this.owned.includes(id)) return null;
     this.owned.push(id); if (this.lent === id) this.lent = null;
     if (!it.worn && (!this.hand || !quiet)) g.state.equip = id;
-    if (!quiet) { g.ui.sticker({ icon: it.icon, name: it.name }, it.kind === 'blaster' ? 'New blaster!' : 'New tool!'); g.sound.star(); }
+    if (!quiet) { g.ui.sticker({ icon: it.icon, name: it.name }, it.relic ? 'Legendary gear!' : it.kind === 'blaster' ? 'New blaster!' : 'New tool!'); g.sound.star(); }
     return it;
+  }
+  // Legendary gear costs mission money. Returns true when the deal is done.
+  buy(id) {
+    const it = gearById(id), g = this.g; if (!it || !it.price || this.owned.includes(id) || g.state.money < it.price) return false;
+    g.addMoney(-it.price); this.grant(id); g.save(); return true;
+  }
+  // The legendary thing in his hand, if any: shown, hidden, and kept moving.
+  wield(it, dt) {
+    const id = it ? it.id : null;
+    if (this.held && this.held.userData.id !== id) { this.held.visible = false; this.held = null; }
+    if (it && !this.held) { let m = this.relics[id]; if (!m) { m = this.relics[id] = buildRelic(id); m.position.set(0, -0.7, 0.02); m.rotation.x = it.hold.r; this.arm.add(m); } m.visible = true; this.held = m; }
+    this.hot = Math.max(0, this.hot - dt * 2.5); if (this.held) this.held.userData.tick(this.g.time, this.hot);
+  }
+  // Where the arm goes for it. Swords sweep from over the shoulder down to the front; everything else just lifts.
+  relicPose(it, busy) {
+    const h = it.hold;
+    if (h.sweep) return this.aimT > 0 ? -(h.sweep[0] + (h.sweep[1] - h.sweep[0]) * Math.min(1, (1 - this.aimT / this.swingLen) * 1.3)) : -h.carry;
+    return -(this.aimT > 0 || busy ? h.use : h.carry);
   }
   // A mission hands over what it needs; it goes back afterwards unless it has been earned by then.
   lend(id) { if (!this.owned.includes(id)) this.lent = id; this.g.state.equip = id; this.cancelFishing(); }
@@ -156,7 +181,7 @@ export class Toolbox {
 
   // What a blaster would hit right now: the robot (or fire) nearest to where the camera is looking.
   target(it) {
-    const g = this.g, p = g.player.pos, yaw = g.cam.yaw, reach = (it.reach || it.radius || 20) * 1.05; let best = null, score = 1e9;
+    const g = this.g, p = g.player.pos, yaw = g.cam.yaw, reach = (it.reach || it.radius || (it.arc && it.swing + it.arc) || 20) * 1.05; let best = null, score = 1e9;
     const consider = (o, x, y, z, top) => { const dx = x - p.x, dz = z - p.z, d = Math.hypot(dx, dz); if (d > reach || d < 0.3) return; const off = Math.abs(angDiff(Math.atan2(dx, dz), yaw)); if (off > 0.75 && d > 7) return; const sc = off * 22 + d; if (sc < score) { score = sc; best = { o, x, y, z, d, top }; } };
     for (const b of g.bots.list) if (!b.dead) consider(b, b.x, b.y + b.k.h * 0.55, b.z, b.y + b.k.h);
     if (it.fx === 'wet') for (const f of g.fires) if (f.heat > 0) consider(f, f.x, f.y + 0.6, f.z, f.y + 1.6);
@@ -165,10 +190,10 @@ export class Toolbox {
   // One frame. inp: { fire, pressed }. Returns what the worn tools change about walking: { run, jump, jet }.
   update(dt, inp, onFoot) {
     const g = this.g, p = g.player, it = onFoot ? this.hand : null, fx = g.fx, mod = this.mod;
-    this.cool = Math.max(0, this.cool - dt); this.nitroT = Math.max(0, this.nitroT - dt); this.aimT = Math.max(0, this.aimT - dt);
+    for (const k in this.cds) this.cds[k] = Math.max(0, this.cds[k] - dt); this.nitroT = Math.max(0, this.nitroT - dt); this.aimT = Math.max(0, this.aimT - dt);
     const can = onFoot && !(g.dizzy > 0) && !g.missions.frozen;
     let tgt = null;
-    if (it && it.kind === 'blaster') {
+    if (it && (it.kind === 'blaster' || it.relic)) {
       tgt = this.target(it);
       if (can && inp.fire && this.cool <= 0) this.shoot(it, tgt);
     } else if (it && can && inp.pressed) {
@@ -182,9 +207,10 @@ export class Toolbox {
     // the marker, the thing in his hand, the arm that holds it
     const mark = this.mark; mark.visible = !!tgt;
     if (tgt) { mark.position.set(tgt.x, tgt.top + 0.9 + Math.sin(g.time * 6) * 0.12, tgt.z); mark.rotation.y += dt * 3; }
-    const shape = it ? it.shape || 'gun' : null;
+    const shape = it && !it.relic ? it.shape || 'gun' : null;
     for (const name in this.shapes) { const m = this.shapes[name], on = name === shape; if (m.visible !== on) m.visible = on; if (on && name === 'gun') m.material.color.setHex(it.color || 0xcfd6dc); }
-    p.armPose = shape ? SHAPES[shape].pose[this.aimT > 0 || (it.kind === 'blaster' && inp.fire && can) ? 1 : 0] : null;
+    this.wield(it && it.relic ? it : null, dt);
+    p.armPose = it && it.relic ? this.relicPose(it, inp.fire && can && !it.cool) : shape ? SHAPES[shape].pose[this.aimT > 0 || (it.kind === 'blaster' && inp.fire && can) ? 1 : 0] : null;
     this.shots.update(dt, g.bots.list, p.pos.x, p.pos.y, p.pos.z, (s) => this.blocked(s), (s, b) => this.impact(s, b));
     for (const c of this.chests) c.update(dt); if (this.chests.length && this.chests[0].gone) this.chests.shift();
     // worn tools
@@ -227,11 +253,22 @@ export class Toolbox {
   }
   shoot(it, tgt) {
     const g = this.g, p = g.player, snd = g.sound, d = this._d;
-    this.aimT = 0.35;
+    this.aimT = 0.35; if (it.relic) this.hot = 1;
+    if (it.arc) {
+      // a slash: everything in a wide arc just ahead of him
+      const yaw = tgt ? Math.atan2(tgt.x - p.pos.x, tgt.z - p.pos.z) : g.cam.yaw, c = hex(it.color); p.heading += angDiff(yaw, p.heading) * 0.8;
+      this.cool = it.cool; this.swingLen = this.aimT = Math.min(0.28, it.cool * 0.95);
+      const cx = p.pos.x + Math.sin(yaw) * it.swing, cz = p.pos.z + Math.cos(yaw) * it.swing, n = g.bots.radial(cx, cz, it.arc, it.dmg, it.fx, p.pos.y);
+      for (let i = 0; i < 16; i++) { const a = yaw + (i / 15 - 0.5) * 2.4, r = it.swing + 0.4; g.fx.emit(p.pos.x + Math.sin(a) * r, p.pos.y + 0.8 + (i / 15) * 0.8, p.pos.z + Math.cos(a) * r, Math.sin(a) * 5, 0.4, Math.cos(a) * 5, 0.26, 0.45, 0.08, c[0], c[1], c[2], 0.9); }
+      if (n) { g.cam.shake = Math.max(g.cam.shake, 0.12); g.input.rumble(0.4, 0.3, 90); }
+      snd.blast(it.id); g.life(cx, cz, it.arc);
+      return;
+    }
     if (it.radius) {
       // a ring around Christian: the Zap Pulse and the Thunder Hammer
       this.cool = it.cool; const c = hex(it.color);
       g.bots.radial(p.pos.x, p.pos.z, it.radius, it.dmg, it.fx, p.pos.y);
+      if (it.stun) for (const b of g.bots.list) if (!b.dead && !b.k.boss && Math.hypot(b.x - p.pos.x, b.z - p.pos.z) <= it.radius + b.k.r) b.stun = Math.max(b.stun, it.stun);   // the Time Baton holds them far longer
       for (let i = 0; i < 40; i++) { const a = (i / 40) * 6.283, q = it.radius * 3.2; g.fx.emit(p.pos.x + Math.cos(a) * 0.6, p.pos.y + 0.5, p.pos.z + Math.sin(a) * 0.6, Math.cos(a) * q, it.fx === 'knock' ? 2 : 0.4, Math.sin(a) * q, 0.45, 0.5, 1.6, c[0], c[1], c[2], 0.9); }
       g.fx.emit(p.pos.x, p.pos.y + 0.15, p.pos.z, 0, 0, 0, 0.5, 1, it.radius * 2.2, c[0], c[1], c[2], 0.6, 0, true);
       g.cam.shake = Math.max(g.cam.shake, it.fx === 'knock' ? 0.3 : 0.14); g.input.rumble(0.6, 0.6, 160); snd.blast(it.id); g.life(p.pos.x, p.pos.z, it.radius);
@@ -337,7 +374,7 @@ export class Toolbox {
     if (it.cool) meter = 1 - this.cool / it.cool;
     if (it.id === 'detector') { const n = this.near; note = !n ? 'nothing near' : n.d < 3.2 ? 'Dig here!' : `${Math.max(10, Math.round((n.d * 3.281) / 10) * 10)} ft`; }
     if (it.id === 'rod' && this.fish) note = this.fish.state === 'bite' ? 'BITE!' : 'waiting…';
-    return { icon: it.icon, name: it.name, key: 'F', label: it.id === 'detector' ? 'Dig' : it.id === 'rod' ? (this.fish ? 'Reel' : 'Cast') : it.id === 'horn' ? 'Honk' : 'Fire', meter, note };
+    return { icon: it.icon, name: it.name, key: 'F', label: it.id === 'detector' ? 'Dig' : it.id === 'rod' ? (this.fish ? 'Reel' : 'Cast') : it.id === 'horn' ? 'Honk' : it.verb || 'Fire', meter, note };
   }
-  reset() { this.shots.clear(); this.cancelFishing(); this.lent = null; this.cool = 0; this.fuel = 1; this.nitroT = 0; this.aimT = 0; for (const c of this.chests) c.dispose(); this.chests = []; this.mark.visible = false; }
+  reset() { this.shots.clear(); this.cancelFishing(); this.lent = null; this.cds = {}; this.fuel = 1; this.nitroT = 0; this.aimT = 0; for (const c of this.chests) c.dispose(); this.chests = []; this.mark.visible = false; this.hot = 0; }
 }

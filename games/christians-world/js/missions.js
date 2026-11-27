@@ -662,7 +662,7 @@ export class Missions {
     g.save();
     g.celebrate();
     g.ui.banner('Mission complete', `${def.title}  +$${pay}` + (won ? `  +  ${won.icon} ${won.name}` : ''));
-    const prize = won ? { icon: won.icon, title: `${won.kind === 'blaster' ? 'New blaster' : 'New tool'}: ${won.name}`, text: useText(won, g.words()) } : null;
+    const prize = won ? { icon: won.icon, title: `${won.relic ? 'Legendary gear' : won.kind === 'blaster' ? 'New blaster' : 'New tool'}: ${won.name}`, text: useText(won, g.words()) } : null;
     setTimeout(() => {
       g.ui.dialog({ name: def.giver.name, text: def.outro + extra, prize, yes: 'OK', onYes: () => { if (first && g.state.done.length === MISSIONS.length) g.finale(); } });
     }, 1600);

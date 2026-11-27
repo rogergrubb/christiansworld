@@ -142,6 +142,14 @@ export class Sound {
     else if (id === 'fireworks') { this.noise(0.4, 0.16, 3000); this.tone(400, 0, 0.35, 'sawtooth', 0.05, 1400); }
     else if (id === 'zap') { for (let i = 0; i < 4; i++) this.tone(1200 - i * 220, i * 0.04, 0.06, 'sawtooth', 0.08); this.noise(0.3, 0.14, 4000); }
     else if (id === 'laser') this.tone(1500, 0, 0.11, 'sawtooth', 0.06, 380);
+    else if (id === 'goo') { this.noise(0.16, 0.14, 500); this.tone(180, 0, 0.14, 'sine', 0.12, 70); }
+    else if (id === 'katana') { this.noise(0.09, 0.1, 5200); this.tone(2200, 0, 0.08, 'sine', 0.04, 3200); }
+    else if (id === 'baton') { for (let i = 0; i < 5; i++) this.tone(1320 - i * 180, i * 0.09, 0.3, 'sine', 0.09); this.tone(110, 0, 0.9, 'sine', 0.2, 55); }
+    else if (id === 'bow') { this.tone(520, 0, 0.12, 'triangle', 0.1, 180); this.noise(0.08, 0.06, 3000); }
+    else if (id === 'trident') { this.tone(1700, 0, 0.07, 'sawtooth', 0.06, 300); this.noise(0.06, 0.08, 5000); }
+    else if (id === 'glove') { this.tone(90, 0, 0.6, 'sine', 0.25, 260); this.tone(420, 0.05, 0.5, 'triangle', 0.06, 900); }
+    else if (id === 'meteor') { this.noise(0.35, 0.18, 900); this.tone(140, 0, 0.3, 'sawtooth', 0.1, 60); }
+    else if (id === 'smasher') { this.tone(60, 0, 0.5, 'sine', 0.4, 30); this.noise(0.5, 0.3, 1400); this.tone(900, 0, 0.25, 'sawtooth', 0.07, 120); }
     else if (id === 'hammer') { this.tone(70, 0, 0.3, 'sine', 0.35, 40); this.noise(0.3, 0.3, 300); }
   }
   splat() { this.noise(0.12, 0.14, 600); }

@@ -131,6 +131,24 @@ body.touch #newsticker { bottom: auto; top: 130px; }
 button.stk.tool { cursor: pointer; }
 button.stk.tool:hover, .stk.tool.sel { outline: 4px solid var(--paint); outline-offset: 1px; }
 .stk.tool.on { background: var(--paint); }
+/* Legendary gear: dark cards with a rendered picture, and the display stand they open. */
+.stk.tool.relic { background: linear-gradient(160deg, #2a2350, #141a33); border: 2px solid #ffd21f; color: #fff; box-shadow: 0 3px 0 var(--ink); cursor: pointer; }
+.stk.tool.relic i { width: 104px; height: 104px; border-radius: 12px; background: radial-gradient(circle at 50% 40%, #3c4a86, #0d1124 75%); border: 0; filter: none; opacity: 1; font-size: 44px; overflow: hidden; }
+.stk.tool.relic i img { width: 100%; height: 100%; display: block; }
+.stk.tool.relic span { color: #cfd6ff; font-weight: 400; }
+.stk.tool.relic u { background: var(--paint); color: var(--ink); font-size: 12px; }
+.stk.tool.relic.on { background: linear-gradient(160deg, #6a4a00, #2a2350); } .stk.tool.relic.on u { background: #fff; }
+#relic { background: rgba(8, 10, 22, .78); }
+#relic .sign { width: min(980px, 100%); max-height: 100%; display: flex; gap: 16px; padding: 16px; background: linear-gradient(160deg, #241d4a, #0f142b); border-color: #ffd21f; box-shadow: 0 0 0 4px #0f142b, 0 10px 26px rgba(0, 0, 0, .5); }
+#relic-view { flex: 1.25; min-width: 0; min-height: 300px; height: min(70vh, 560px); border-radius: 12px; background: radial-gradient(circle at 50% 42%, #44539a, #10142b 72%); }
+#relic-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px; text-align: left; overflow-y: auto; }
+#relic-info h2 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 30px; color: #ffd21f; }
+#relic-info p { margin: 0; font-size: 15px; line-height: 1.35; } #relic-tale { font-style: italic; color: #cfd6ff; }
+#relic-stats { display: grid; gap: 6px; margin: 4px 0; } #relic-stats div { display: flex; align-items: center; gap: 5px; } #relic-stats span { width: 62px; font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+#relic-stats i { width: 26px; height: 10px; border-radius: 3px; background: rgba(255,255,255,.16); } #relic-stats i.on { background: #ffd21f; }
+#relic-note { font-size: 13.5px; color: #cfd6ff; margin-top: auto; } #relic-info .row { display: flex; gap: 10px; flex-wrap: wrap; }
+@media (max-height: 520px), (max-width: 640px) { #relic .sign { padding: 10px; gap: 10px; } #relic-view { height: min(78vh, 420px); min-height: 180px; } #relic-info h2 { font-size: 22px; } #relic-info p { font-size: 13px; } .stk.tool.relic i { width: 72px; height: 72px; } }
+@media (max-width: 640px) and (orientation: portrait) { #relic .sign { flex-direction: column; } #relic-view { height: 38vh; flex: none; } }
 .stk.tool.on i { background: #fff; }
 .stk.tool.on u { background: var(--ink); }
 #lines { position: fixed; inset: 0; pointer-events: none; opacity: 0; transition: opacity .25s;
@@ -412,6 +430,20 @@ body.touch #topbtns { top: 196px; }
     <div id="tools-grid"></div>
     <div id="tools-help"></div>
     <button class="btn go small" id="tools-close" type="button">Close</button>
+  </div>
+</div>
+
+<div id="relic" class="overlay" hidden>
+  <div class="sign" role="dialog" aria-label="Legendary gear">
+    <div id="relic-view"></div>
+    <div id="relic-info">
+      <h2 id="relic-name"></h2>
+      <p id="relic-tale"></p>
+      <p id="relic-use"></p>
+      <div id="relic-stats"></div>
+      <div id="relic-note"></div>
+      <div class="row"><button class="btn go" id="relic-act" type="button"></button><button class="btn small" id="relic-back" type="button">Back</button></div>
+    </div>
   </div>
 </div>
 

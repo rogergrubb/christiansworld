@@ -28,7 +28,7 @@ export const PLACES = [
 ].map(([id, name, x, z, r]) => ({ id, name, x, z, r }));
 
 const done = (id) => (g) => g.state.done.includes(id);
-const TOOLS = GEAR.filter((q) => q.kind === 'tool').length, BLASTERS = GEAR.length - TOOLS;
+const TOOLS = GEAR.filter((q) => q.kind === 'tool').length, BLASTERS = GEAR.filter((q) => q.kind === 'blaster').length;
 const owned = (kind) => (g) => g.state.gear.filter((id) => GEAR.some((q) => q.id === id && q.kind === kind)).length;
 const upTo = (n, get) => (g) => [Math.min(n, Math.floor(get(g))), n];
 // icon, name, how to earn it, and a test that says whether it has been earned (some also report progress)

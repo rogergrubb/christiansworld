@@ -2,6 +2,7 @@
 import { MAP_SCALE, POI } from './world.js';
 import { fmtTime, fmtDist } from './util.js';
 import { GEAR, useText } from './gear.js';
+import { RELICS, Vault } from './relics.js';
 
 const $ = (id) => document.getElementById(id);
 const PLACES = [
@@ -37,6 +38,8 @@ export class UI {
     $('dlg-alt').addEventListener('click', () => this.answer('alt'));
     $('book-close').addEventListener('click', () => this.book(false));
     $('tools-close').addEventListener('click', () => this.tools(false));
+    this.vault = new Vault(); this.relicId = null; this.thumbRun = 0;
+    $('relic-back').addEventListener('click', () => this.relic(null)); $('relic-act').addEventListener('click', () => this.relicAct());
     $('btn-tools').addEventListener('click', () => { if (this.g.mode === 'play' && !this.g.paused && !this.dialogOpen && !this.mapOpen && !this.bookOpen && !this.g.cine) this.tools(true); });
     $('photo-back').addEventListener('click', () => { $('photo-view').hidden = true; $('view').focus(); });
     $('btn-book').addEventListener('click', () => { if (this.g.mode === 'play' && !this.g.paused && !this.dialogOpen && !this.mapOpen && !this.toolsOpen && !this.g.cine) this.book(true); });
@@ -139,7 +142,7 @@ export class UI {
   }
   // The toolbox: every tool and blaster, earned or still to win. Anything that is held can be picked here.
   tools(on) {
-    this.toolsOpen = on; $('tools').hidden = !on; if (!on) { $('view').focus(); return; }
+    this.toolsOpen = on; $('tools').hidden = !on; if (!on) { this.relicId = null; $('relic').hidden = true; this.vault.hide(); $('view').focus(); return; }
     const g = this.g, grid = $('tools-grid'), how = g.words(); let have = 0; grid.textContent = ''; this.toolCards = [];
     for (const kind of ['tool', 'blaster']) {
       const h = document.createElement('h3'); h.textContent = kind === 'tool' ? 'Tools' : 'Blasters'; grid.append(h);
@@ -156,18 +159,53 @@ export class UI {
         grid.append(d);
       }
     }
+    // Legendary gear: bought with mission money. Every card opens the display stand, where it turns in full detail.
+    const h = document.createElement('h3'); h.textContent = `Legendary gear · you have $${g.state.money}`; grid.append(h); const waiting = [];
+    const pic = (i, src) => { const im = new Image(); im.alt = ''; im.src = src; i.textContent = ''; i.append(im); };
+    for (const it of RELICS) {
+      const got = g.gear.has(it.id), inHand = got && g.state.equip === it.id; if (got) have++;
+      const d = document.createElement('button'); d.type = 'button'; d.className = 'stk tool relic' + (got ? ' got' : '') + (inHand ? ' on' : '');
+      const i = document.createElement('i'); i.textContent = it.icon; if (this.vault.thumbs[it.id]) pic(i, this.vault.thumbs[it.id]); else waiting.push([i, it.id]);
+      const b = document.createElement('b'); b.textContent = it.name;
+      const s = document.createElement('span'); s.textContent = got ? useText(it, how) : it.tale;
+      const u = document.createElement('u'); u.textContent = inHand ? 'In your hand' : got ? 'Pick up' : `$${it.price}`;
+      d.append(i, b, s, u); d.addEventListener('click', () => this.relic(it.id));
+      if (inHand) this.toolSel = this.toolCards.length; this.toolCards.push({ el: d, id: it.id, relic: true }); grid.append(d);
+    }
+    // the pictures are drawn one at a time so the toolbox opens straight away
+    const run = ++this.thumbRun, next = () => { const job = waiting.shift(); if (!job || run !== this.thumbRun || !this.toolsOpen) return; const src = this.vault.thumb(job[1]); if (src) pic(job[0], src); setTimeout(next, 20); }; setTimeout(next, 40);
     $('tools-count').textContent = `${have} of ${GEAR.length}`;
-    $('tools-help').textContent = !this.toolCards.length ? 'Nothing to hold yet. Finish missions to fill the toolbox.' : how === 'touch' ? 'Tap something to hold it. The round tool button uses it.' : how === 'pad' ? 'Move with the stick and press A to hold something. RB uses it, LB swaps.' : 'Click something to hold it. F uses it, Q swaps to the next one.';
+    $('tools-help').textContent = !this.toolCards.length ? 'Finish missions to fill the toolbox.' : how === 'touch' ? 'Tap something to hold it. The round tool button uses it.' : how === 'pad' ? 'Move with the stick and press A to hold something. RB uses it, LB swaps.' : 'Click something to hold it. F uses it, Q swaps to the next one.';
     this.toolMark();
+  }
+  // The display stand for one piece of legendary gear: a turntable, what it does, and Buy or Hold.
+  relic(id) {
+    this.relicId = id; $('relic').hidden = !id;
+    if (!id) { this.vault.hide(); if (this.toolsOpen) this.tools(true); return; }
+    const it = RELICS.find((q) => q.id === id), st = $('relic-stats');
+    $('relic-name').textContent = it.name; $('relic-tale').textContent = it.tale; $('relic-use').textContent = useText(it, this.g.words()); st.textContent = '';
+    ['Power', 'Speed', 'Reach'].forEach((name, k) => { const row = document.createElement('div'), l = document.createElement('span'); l.textContent = name; row.append(l); for (let n = 1; n <= 5; n++) { const pip = document.createElement('i'); if (n <= it.stats[k]) pip.className = 'on'; row.append(pip); } st.append(row); });
+    this.vault.show(id, $('relic-view')); this.relicPaint();
+  }
+  relicPaint() {
+    const g = this.g, it = RELICS.find((q) => q.id === this.relicId), got = g.gear.owned.includes(it.id), inHand = got && g.state.equip === it.id, money = g.state.money, act = $('relic-act');
+    act.textContent = inHand ? 'In your hand' : got ? 'Hold it' : `Buy for $${it.price}`; act.disabled = inHand || (!got && money < it.price);
+    $('relic-note').textContent = got ? 'Yours for keeps.' : money >= it.price ? `You have $${money}.` : `You have $${money}. Earn $${it.price - money} more: missions, treasure and fish all pay.`;
+  }
+  relicAct() {
+    const g = this.g, id = this.relicId; if (!id || $('relic-act').disabled) return;
+    if (g.gear.owned.includes(id)) { g.gear.equip(id); this.tools(false); }
+    else if (g.gear.buy(id)) { this.vault.flash(); this.relicPaint(); }
   }
   toolMark() { this.toolCards.forEach((c, k) => c.el.classList.toggle('sel', k === this.toolSel)); const c = this.toolCards[this.toolSel]; if (c) c.el.scrollIntoView({ block: 'nearest' }); }
   // Keys and controller on the toolbox screen.
   toolsKeys(inp) {
+    if (this.relicId) { if (inp.pressed('KeyG', 'Escape', 'KeyB') || (inp.pad.on && inp.pressed('ShiftLeft'))) this.relic(null); else if (inp.pressed('Enter', 'KeyE', 'Space', 'KeyF')) this.relicAct(); return; }
     if (inp.pressed('KeyG', 'Escape', 'KeyB') || (inp.pad.on && inp.pressed('ShiftLeft'))) return this.tools(false);
     const n = this.toolCards.length; if (!n) return;
     const mv = inp.nav();
     if (mv) { this.toolSel = (this.toolSel + (mv[0] || mv[1]) + n) % n; this.toolMark(); this.g.sound.tick(); }
-    else if (inp.pressed('Enter', 'KeyE', 'Space', 'KeyF')) { this.g.gear.equip(this.toolCards[this.toolSel].id); this.tools(false); }
+    else if (inp.pressed('Enter', 'KeyE', 'Space', 'KeyF')) { const c = this.toolCards[this.toolSel]; if (c.relic) this.relic(c.id); else { this.g.gear.equip(c.id); this.tools(false); } }
   }
   // What is in Christian's hand, bottom left: its name, a note, and a meter (fuel, or how soon it can be used again).
   gear(c) {

@@ -1,0 +1,51 @@
+# Agent Memory – Christian's World (christiansworld.app)
+
+## 1. Project Overview
+- Static site of Christian's games. Main game: `games/christians-world/` — a 3D island (Three.js r170 from cdnjs, ES modules, no build step).
+- Primary user: Christian (plays on a tablet and desktop). Built with his dad, Roger.
+- Non-goals: no framework, no bundler, no accounts, no server.
+
+## 2. Definition of Done
+- Every change runs in a real browser with zero console errors and is playable by touch, keyboard and gamepad.
+- Saves (`localStorage` key `christians-world-v1`) from older versions must keep loading.
+- No copied characters, logos or named items from films, comics or other games. Christian's ideas get original designs and names.
+
+## 3. Current State (2026-11-26)
+- Legendary gear added: 8 high-detail items in `js/relics.js`, bought with mission money in the Toolbox.
+- Tested in headless Chrome: all 8 buy, equip, show in hand and affect robots. No console errors.
+- Live play copy: claude.ai artifact "Christian's World" (slug 44e49ac2-23fc-4b27-bcfd-dc80b2840a7f), republished with this change.
+- NOT yet on GitHub / christiansworld.app: this session could read the repo but not push.
+- Repo is still PUBLIC. Roger wants it private (GitHub Pages on a private repo needs a paid plan; Vercel does not).
+
+## 4. Architecture & Design Decisions
+- `gear.js` owns every tool. `GEAR` = mission tools + blasters + `...RELICS`. Items with `relic: true` are bought (`Toolbox.buy`), never won.
+- `relics.js` has no dependency on `gear.js` (avoids an import cycle). It exports `RELICS`, `buildRelic(id)`, `Vault`.
+- Relic models: grip at the origin, business end along +Y, `userData.tick(t, hot)` animates. Mounted on the right arm at (0,-0.7,0.02) with `rotation.x = hold.r`.
+- Reflections come from one painted equirect canvas set as `envMap` per material, so both renderers (game + display stand) convert it themselves. Do not use PMREM render targets: they cannot be shared between WebGL contexts.
+- `Vault` is a second small WebGL renderer for the Toolbox turntable and card pictures. Pictures are drawn one per timer tick so the Toolbox opens at once.
+- Cooldowns are per item (`Toolbox.cds`), so a 6 s wait on one item never blocks the next.
+
+## 5. Known Issues & Landmines
+- `progress.js` counts blasters by `kind === 'blaster'`. Never go back to `GEAR.length - TOOLS`, or relics break the "Full Toolbox" sticker.
+- `ExtrudeGeometry` bevels fold over at needle-sharp tips: blunt a blade's outline before the last 4%.
+- Held swords clip through scenery. Accepted.
+
+## 6. Debug History
+- Bow/trident/glove "did nothing" right after the Time Baton → one shared cooldown → made cooldowns per item.
+- Display-stand models off-centre → `Box3.setFromObject` without `precise` → pass `true`.
+
+## 7. Proven Patterns
+- Local test: serve the repo, Playwright + system Chrome with swiftshader, route `cdnjs.cloudflare.com/**` to a local `three.module.min.js`. `window.__cw` is the game; set `game.manual = true` and call `game.tick(dt)` to step it.
+- New relic = one entry in `RELICS` + one builder in `BUILD` + one sound in `audio.js blast()`.
+
+## 8. Failed Approaches (Do Not Retry)
+- GitHub connector file reads/writes from a claude.ai cloud session: fails with "missing Mcp-Param-owner header".
+
+## 9. Open Questions
+- Christian asked for a Venom sword, the Hadron Enforcer and the Time Stick by name. Those are Marvel's; the game has original stand-ins (Midnight Goo Blade, Atom Smasher, Time Baton). More of his ideas are welcome as originals.
+- Does he want a Roblox-style "evolutions" ladder (levels, wins, multipliers) like the game in his screenshots?
+
+## 10. Next Actions
+1. Push this commit to GitHub (needs a session with push access) and confirm christiansworld.app updates.
+2. Make the repo private and move hosting to Vercel if Pages stops serving.
+3. More legendary gear, auras and titles if Christian wants them.
