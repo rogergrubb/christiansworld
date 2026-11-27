@@ -12,6 +12,6 @@ Saving uses a DataStore. It only works once the place is published and "Enable S
 (Game Settings → Security). Until then progress lasts one play session.
 
 Status (2026-11-26): runs clean in Studio (no Output errors; world, shop, HUD, robots and the dart blaster all work).
-Published PRIVATE as "Christian's World: Evolve" on account Playa_Surfer102, place id 90920311552905:
+Published and now PUBLIC (ages 16+ only, rated Mild) as "Christian's World: Evolve" on account Playa_Surfer102, place id 90920311552905:
 https://www.roblox.com/games/90920311552905
 Not yet tried in play: buying items, evolving, saving.

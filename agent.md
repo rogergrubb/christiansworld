@@ -48,9 +48,9 @@
 
 ## 9. Open Questions
 - Christian asked for a Venom sword, the Hadron Enforcer and the Time Stick by name. Those are Marvel's; the game has original stand-ins (Midnight Goo Blade, Atom Smasher, Time Baton). More of his ideas are welcome as originals.
-- Roblox version: `roblox/` (place file + three Luau scripts). Runs clean in Studio and is published PRIVATE on Playa_Surfer102 as place 90920311552905 with Team Create on. Buying, evolving and saving are not yet play-tested. Items are built from Roblox parts, so they are simpler than the web models; real meshes need a GUI import in Studio.
+- Roblox version: `roblox/` (place file + three Luau scripts). Runs clean in Studio. PUBLIC since 2026-11-26 on Playa_Surfer102, https://www.roblox.com/games/90920311552905 (universe 10779269499), rated Mild, genre Simulation / Incremental Simulator (genre locked for 3 months). Roblox limits it to players 16+ until it has 100 highly engaged players or the 1,000 Robux Kids & Select fee is paid; under-16 accounts cannot join. Audience and rating live on create.roblox.com, not in Studio. Buying, evolving and saving are not yet play-tested. Items are built from Roblox parts, so they are simpler than the web models; real meshes need a GUI import in Studio.
 
 ## 10. Next Actions
-1. Roblox: Roger picks testers (Invite early testers, up to 10 friends) or releases publicly; then play-test buying, evolving and saving. Studio's command bar runs with the Run button, not Enter.
+1. Roblox: decide how under-16 players get in (fee, 100 engaged players, or private tester invites); play-test buying, evolving and saving; add an icon and thumbnail. Studio's command bar runs with the Run button, not Enter.
 2. Make the repo private and move hosting to Vercel if Pages stops serving.
 3. More legendary gear, auras and titles if Christian wants them.
