@@ -4,6 +4,7 @@ import * as THREE from './three.js';
 import { Batch, GEO, WATER_Y } from './world.js';
 import { clamp, damp, angDiff } from './util.js';
 import { glowTexture } from './fx.js';
+import { OctoRig } from './octo.js';
 
 const STEEL = 0x9aa7b4, DARK = 0x39414c, BLACK = 0x27323f, RUST = 0xb5651d, TEAL = 0x1fb7c9, WARN = 0xffd21f, EYE = 0xff3b30, IRON = 0x6b7785;
 const SIDE = [-1, 1];
@@ -14,6 +15,8 @@ export const KINDS = {
   walker: { name: 'Clanker', r: 0.6, h: 1.95, hp: 4, speed: 3.6, coins: 2, max: 20, see: 26 },
   brute: { name: 'Big Clanker', r: 1.1, h: 2.75, hp: 10, speed: 2.7, coins: 4, max: 8, see: 28 },
   drone: { name: 'Buzz Drone', r: 0.7, h: 0.6, hp: 1.5, speed: 6.5, coins: 1, max: 20, see: 30, fly: 4.2 },
+  // Octoclank is drawn by octo.js (eight walking legs); its entry in BUILD is only the hidden core.
+  octo: { name: 'Octoclank', r: 2.0, h: 4.4, hp: 240, speed: 3.3, coins: 10, max: 1, see: 400, boss: true },
   mega: { name: 'Mega Clanker', r: 2.7, h: 7.6, hp: 360, speed: 2.5, coins: 14, max: 1, see: 400, boss: true },
 };
 
@@ -48,6 +51,7 @@ const BUILD = {
     for (const sx of SIDE) for (const sz of SIDE) b.add(GEO.cyl, sx * 0.46, 0.44, sz * 0.46, 0.3, 0.03, 0.3, BLACK);
     b.box(0, 0.05, 0, 0.3, 0.1, 0.3, DARK);
   },
+  octo(b) { b.box(0, 3.0, 0, 0.5, 0.5, 0.5, DARK); },
   mega(b) {
     for (const s of SIDE) {
       b.box(s * 1.1, 1.4, 0, 1.0, 2.8, 1.2, DARK); b.box(s * 1.1, 0.25, 0.3, 1.4, 0.5, 2.2, BLACK);
@@ -81,6 +85,19 @@ function instanced(scene, geo, mat, max, shadows = true) {
   return im;
 }
 
+// What Octoclank says, and the noise it makes while saying it.
+const OCTO_VOICE = { hello: 'boo', ow: 'ow', taunt: 'talk', miss: 'grump', caught: 'laugh', hot: 'yawn', slam: 'boo', bye: 'cry' };
+const OCTO_LINES = {
+  hello: ['BOO! Did I scare you? I practised that all the way up the sea bed.', 'Eight legs! Count them! ...Actually don\'t, I lose count.'],
+  ow: ['OW! That was my favourite leg!', 'Hey! I JUST polished that!', 'Rude!', 'Stop it, that tickles!', 'Not the face! It\'s my only one!', 'I\'m telling the Professor!'],
+  taunt: ['I have EIGHT legs. You have two. Ha!', 'Do you know how long it takes to put on eight shoes?', 'Who put sand in my sockets?', 'I only came up here for an ice cream.', 'Left, left, left, left, right, right... no wait.', 'Does this beach have a toilet? Asking for a friend.', 'My legs keep playing that silly tune. I can\'t make them stop.'],
+  miss: ['Hold still!', 'Stop JUMPING! That\'s cheating!', 'Missed? I never miss! ...I missed.'],
+  caught: ['Got you! Come here, tiny!', 'Wheee! Again! Again!'],
+  hot: ['Too hot! Too hot! Who turned the sea off?', 'I need a nap. Eight naps. One for each leg.', 'Is something burning? Oh. It\'s me.'],
+  slam: ['BELLY FLOP!', 'CANNONBALL!'],
+  bye: ['I\'m telling my mum!', 'Fine! I didn\'t even WANT your beach!'],
+};
+
 export class Bots {
   constructor(game) {
     const scene = game.scene; this.g = game; this.list = []; this.coins = []; this.dirty = false; this.coinT = 0; this.campT = 0;
@@ -88,6 +105,8 @@ export class Bots {
     const mat = new THREE.MeshLambertMaterial({ vertexColors: true });
     this.mesh = {};
     for (const kind of Object.keys(KINDS)) { const b = new Batch(); BUILD[kind](b); this.mesh[kind] = instanced(scene, b.geometry(), mat, KINDS[kind].max); }
+    this.rig = new OctoRig(scene, game.world); this._dt = 0; this.sayT = 0; this.lastLine = '';
+    this.rig.onStep = (i) => { const f = game.focus(), o = this.list.find((b) => b.kind === 'octo' && !b.dead); if (o && Math.hypot(o.x - f.x, o.z - f.z) < 80) game.sound.octoStep(i); };
     this.shell = instanced(scene, GEO.sph, new THREE.MeshLambertMaterial({ transparent: true, opacity: 0.38, depthWrite: false }), 40, false);
     this.shell.renderOrder = 3;
     const bale = new THREE.CylinderGeometry(0.42, 0.42, 0.9, 10); bale.rotateZ(Math.PI / 2);
@@ -106,6 +125,15 @@ export class Bots {
     });
     const heap = new THREE.Mesh(pile.geometry(), mat); heap.castShadow = true; heap.receiveShadow = true; scene.add(heap);
   }
+  // Octoclank talks. A lot. kind picks the noise and the list of things it might say; chance: how often it bothers with words.
+  octoSay(kind, chance = 1, force = false) {
+    const g = this.g; if (!force && g.time < this.sayT) return false;
+    this.sayT = g.time + 3.2; g.sound.octoSay(OCTO_VOICE[kind] || 'talk');
+    if (Math.random() > chance) return true;
+    const lines = OCTO_LINES[kind]; let line = lines[(Math.random() * lines.length) | 0]; if (line === this.lastLine) line = lines[(lines.indexOf(line) + 1) % lines.length];
+    this.lastLine = line; this.said = (this.said || 0) + 1; g.ui.toast(`Octoclank: “${line}”`, 2.6);
+    return true;
+  }
   count(kind) { let n = 0; for (const b of this.list) if (!b.dead && b.kind === kind) n++; return n; }
   alive(group) { let n = 0; for (const b of this.list) if (!b.dead && b.group === group) n++; return n; }
   // Put a robot in the world. o: home {x, z, r}, mode ('guard', 'goal', 'flee', 'boss'), goal, path, group, carry, onZonk, onGoal.
@@ -118,7 +146,7 @@ export class Bots {
       onZonk: o.onZonk || null, onGoal: o.onGoal || null, atGoal: false,
       t: Math.random() * 9, born: 0, a: Math.random() * 6.283, wanderT: 0, tx: x, tz: z, stuckT: 0, lastD: 1e9,
       stun: 0, ice: 0, cold: 0, net: 0, bub: 0, blind: 0, bonkT: 0, ramT: 0, flash: 0, tint: null, dead: false, air: false, fall: false,
-      phase: 'walk', pt: 0, stompT: 5, spawnT: 9, next: 0.667, lift: 0, stepT: 0,
+      reelT: 3, whip: 0, phase: 'walk', pt: 0, stompT: 5, spawnT: 9, next: 0.667, lift: 0, stepT: 0,
     };
     this.list.push(b); return b;
   }
@@ -140,6 +168,7 @@ export class Bots {
     if (k.boss && b.phase === 'down') dmg *= 2;
     if (k.boss && dmg > 20) dmg = 20;
     b.hp -= dmg; b.flash = 0.12;
+    if (b.kind === 'octo' && dmg > 0 && b.hp > 0) this.octoSay('ow', 0.3);
     if (!k.boss && !b.air && b.bub <= 0) { b.vx += vx * 0.06; b.vz += vz * 0.06; }
     if (b.hp <= 0) this.zonk(b); else if (dmg >= 0.5) g.sound.clank();
   }
@@ -159,6 +188,7 @@ export class Bots {
   // A robot shuts down: sparks, a clatter, and coins.
   zonk(b) {
     if (b.dead) return;
+    if (b.kind === 'octo') this.octoSay('bye', 1, true);
     const g = this.g, fx = g.fx, k = b.k, y = b.y + k.h * 0.5;
     b.dead = true; this.dirty = true; g.state.stats.bots++; g.evo.gain(k.boss ? 200 : 10);
     fx.burst(b.x, y, b.z, k.boss ? 60 : 16, k.boss ? 12 : 6, 0.6, 0.16, 0.05, 1, 0.85, 0.3, 1, 14, 1.2);
@@ -193,6 +223,7 @@ export class Bots {
     if (b.hp / k.hp < b.next && b.phase !== 'down') {
       b.next -= 0.333; b.phase = 'down'; b.pt = 4.5; b.lift = 0;
       g.ui.toast('It is overheating. Blast it now!', 2.6); g.sound.zonk(true);
+      if (b.kind === 'octo') this.octoSay('hot', 1, true);
       for (let i = 0; i < 5; i++) { const a = Math.random() * 6.283; this.coins.push({ x: b.x, y: b.y + 4, z: b.z, vx: Math.cos(a) * 6, vy: 7, vz: Math.sin(a) * 6, t: 0, pull: false }); }
     }
     if (b.phase === 'down') {
@@ -206,6 +237,7 @@ export class Bots {
       if (b.pt <= 0) {
         // the stamp: a ring of dust, and anyone standing close goes flying
         b.phase = 'walk'; b.lift = 0; b.stompT = 5 + Math.random() * 2;
+        if (b.kind === 'octo') this.octoSay('slam', 0.7, true);
         for (let i = 0; i < 46; i++) { const a = (i / 46) * 6.283; fx.emit(b.x + Math.cos(a) * 2.5, b.y + 0.3, b.z + Math.sin(a) * 2.5, Math.cos(a) * 22, 1.2, Math.sin(a) * 22, 0.7, 0.9, 3, 0.78, 0.72, 0.6, 0.7); }
         fx.emit(b.x, b.y + 0.15, b.z, 0, 0, 0, 0.6, 3, 24, 1, 1, 1, 0.5, 0, true);
         g.cam.shake = Math.max(g.cam.shake, dp < 60 ? 0.55 : 0); g.sound.thud(9); g.input.rumble(1, 0.6, 320);
@@ -221,14 +253,26 @@ export class Bots {
     out.dx = (f.x - b.x) / dp; out.dz = (f.z - b.z) / dp; if (dp < k.r + 1.5) out.sp = 0;
     if ((b.stepT -= dt) <= 0) { b.stepT = 0.62; if (dp < 90) { g.sound.thud(dp < 30 ? 4 : 1.5); if (dp < 30) g.cam.shake = Math.max(g.cam.shake, 0.1); fx.burst(b.x, b.y + 0.2, b.z, 6, 4, 0.7, 0.6, 2, 0.78, 0.72, 0.6, 0.5, 0, 0.3); } }
     if ((b.stompT -= dt) <= 0 && dp < 17) { b.phase = 'rise'; b.pt = 0.85; }
+    if (b.kind === 'octo') {
+      // the cable whip: one leg rears back, then lashes out and drags Christian in. Being in the air dodges it.
+      if (b.whip > 0) {
+        if ((b.whip -= dt) <= 0) {
+          b.whip = 0; b.reelT = 6.5; g.sound.blast('boomerang');
+          if (onFoot && p.onGround && dp < 26) { p.vx = -out.dx * 15; p.vz = -out.dz * 15; p.vy = 5; p.onGround = false; g.cam.shake = Math.max(g.cam.shake, 0.2); g.input.rumble(0.6, 0.3, 160); g.state.stats.whipped = (g.state.stats.whipped || 0) + 1; if (g.state.stats.whipped === 1) g.ui.toast('Caught! Jump when its eyes turn red.', 2); else this.octoSay('caught', 1, true); }
+          else if (onFoot && dp < 26) this.octoSay('miss', 0.8);
+        }
+      } else if ((b.reelT -= dt) <= 0 && onFoot && dp > 8 && dp < 24) { b.whip = 0.9; g.sound.beep(520); }
+      if ((b.tauntT = (b.tauntT ?? 4) - dt) <= 0 && this.octoSay('taunt')) b.tauntT = 7 + Math.random() * 4;
+    }
     if ((b.spawnT -= dt) <= 0) {
       b.spawnT = 11;
-      if (this.alive(b.group) < 6) for (const s of SIDE) this.spawn('roller', b.x + Math.cos(b.h) * s * 4.5, b.z - Math.sin(b.h) * s * 4.5, { home: { x: b.home.x, z: b.home.z, r: b.home.r }, group: b.group });
+      if (this.alive(b.group) < 6) for (const s of SIDE) this.spawn(b.kind === 'octo' ? 'drone' : 'roller', b.x + Math.cos(b.h) * s * 4.5, b.z - Math.sin(b.h) * s * 4.5, { home: { x: b.home.x, z: b.home.z, r: b.home.r }, group: b.group });
     }
   }
 
   update(dt, p, onFoot) {
     if (dt <= 0) return;
+    this._dt = dt;
     const g = this.g, w = g.world, fx = g.fx, c = this._c, f = g.focus(), pv = p.vehicle, out = this._o || (this._o = { dx: 0, dz: 0, sp: 1 });
     this.camps(dt, f);
     const list = this.list, n = list.length;
@@ -368,9 +412,10 @@ export class Bots {
   draw() {
     const g = this.g, time = g.time;
     for (const kind in this.mesh) this.mesh[kind].count = 0;
-    let shells = 0, bales = 0; const shell = this.shell, hay = this.hay;
+    let shells = 0, bales = 0, octo = null; const shell = this.shell, hay = this.hay;
     for (const b of this.list) {
       if (b.dead) continue;
+      if (b.kind === 'octo') octo = b;
       const k = b.k, im = this.mesh[b.kind], i = im.count++;
       const moving = Math.hypot(b.vx, b.vz), s = Math.min(1, b.born * 5);
       let rx = Math.min(0.16, moving * 0.035), rz = 0, y = b.y + b.lift;
@@ -392,6 +437,7 @@ export class Bots {
       }
       if (b.carry && bales < 16) { _e.set(0, b.h, 0, 'YXZ'); _q.setFromEuler(_e); _m.compose(_p.set(b.x, y + k.h + 0.45, b.z), _q, _s.set(1, 1, 1)); hay.setMatrixAt(bales++, _m); }
     }
+    if (octo) this.rig.update(octo, this._dt, time); else this.rig.hide();
     for (const kind in this.mesh) { const im = this.mesh[kind]; if (im.count) { im.instanceMatrix.needsUpdate = true; im.instanceColor.needsUpdate = true; } }
     shell.count = shells; if (shells) { shell.instanceMatrix.needsUpdate = true; shell.instanceColor.needsUpdate = true; }
     hay.count = bales; if (bales) hay.instanceMatrix.needsUpdate = true;

@@ -126,6 +126,26 @@ export class Sound {
     this.hl.g.gain.setTargetAtTime(v, t, 0.15); this.hl.lg.gain.setTargetAtTime(v * 0.75, t, 0.15); this.hl.lfo.frequency.setTargetAtTime(5 + power * 9, t, 0.25);
   }
   jingle() { [659, 784, 880, 784, 659, 523, 587, 659].forEach((f, i) => this.tone(f, i * 0.16, 0.18, 'triangle', 0.13)); }
+  // ---- Octoclank: every leg plays its own note, so its walk is a daft little tune, and it never stops talking
+  octoStep(i) {
+    const now = typeof performance !== 'undefined' ? performance.now() : 0; if (now - (this.octoAt || -99) < 45) return; this.octoAt = now; this.octoSteps = (this.octoSteps || 0) + 1;
+    const f = [262, 294, 330, 392, 440, 523, 587, 659][i % 8];
+    this.tone(f, 0, 0.09, 'triangle', 0.07, f * 0.94);                // a hollow pipe bonk
+    this.tone(1300 + i * 90, 0.02, 0.07, 'sine', 0.03, 2300);         // a rubbery squeak
+    this.noise(0.05, 0.05, 500);                                      // a squelch in the sand
+  }
+  // Gibberish in a tin-can voice. kind: 'ow', 'laugh', 'grump', 'yawn', 'boo', 'cry', 'talk'.
+  octoSay(kind) {
+    this.octoSaid = (this.octoSaid || 0) + 1;
+    const v = (f, at, dur, to, vol = 0.1) => { this.tone(f, at, dur, 'sawtooth', vol, to); this.tone(f * 2.02, at, dur, 'square', vol * 0.3, to * 2.02); };
+    if (kind === 'ow') { v(320, 0, 0.09, 760); v(700, 0.09, 0.22, 240); }
+    else if (kind === 'laugh') for (let i = 0; i < 6; i++) v(420 - i * 34, i * 0.11, 0.07, 330 - i * 34);
+    else if (kind === 'grump') { v(150, 0, 0.16, 120); v(135, 0.2, 0.14, 110); v(170, 0.38, 0.3, 90); }
+    else if (kind === 'yawn') { v(260, 0, 0.5, 420, 0.08); v(420, 0.5, 0.7, 110, 0.08); }
+    else if (kind === 'boo') { v(110, 0, 0.5, 90, 0.14); this.tone(880, 0.5, 0.12, 'sine', 0.06, 1500); }
+    else if (kind === 'cry') for (let i = 0; i < 4; i++) v(520 - i * 60, i * 0.22, 0.18, 300 - i * 40, 0.08);
+    else for (let i = 0, n = 4 + ((Math.random() * 4) | 0); i < n; i++) { const f = 170 + Math.random() * 230; v(f, i * 0.105, 0.085, f * (0.7 + Math.random() * 0.7)); }
+  }
   // ---- tools, blasters and robots
   jet(on) { if (!this.ctx || (!on && !this.jt)) return; const n = this.loop('jt', 'bandpass', 950, 0.8); n.g.gain.setTargetAtTime(on ? 0.17 : 0, this.ctx.currentTime, 0.05); }
   blast(id) {
@@ -135,7 +155,7 @@ export class Sound {
     else if (id === 'snow') { this.noise(0.08, 0.12, 900); this.tone(220, 0, 0.08, 'sine', 0.1, 140); }
     else if (id === 'net') { this.noise(0.18, 0.14, 1200); this.tone(300, 0, 0.16, 'triangle', 0.08, 120); }
     else if (id === 'freeze') this.tone(1800, 0, 0.07, 'sine', 0.05, 2600);
-    else if (id === 'paint') { this.noise(0.07, 0.1, 700); this.tone(260, 0, 0.07, 'sine', 0.09, 180); }
+    else if (id === 'paint' || id === 'ink') { this.noise(0.07, 0.1, 700); this.tone(260, 0, 0.07, 'sine', 0.09, 180); }
     else if (id === 'popcorn') { this.tone(160, 0, 0.16, 'square', 0.1, 70); this.noise(0.14, 0.2, 500); }
     else if (id === 'bubble') this.tone(500, 0, 0.09, 'sine', 0.07, 900);
     else if (id === 'boomerang') this.noise(0.25, 0.08, 1800);

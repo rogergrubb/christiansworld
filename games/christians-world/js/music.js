@@ -35,10 +35,12 @@ export class Radio {
     this.level = 0.8; this.station = -1; this.on = false; this.t = 0; this.step = 0; this.notes = 0; this.shift = 0; this.phrases = new Map(); this.rush = 0;
   }
   get name() { return this.station < 0 ? 'Radio off' : STATIONS[this.station].name; }
-  tune(i) { this.station = i; this.step = 0; this.t = 0; this.phrases = new Map(); }
+  // Some stations are busier than others; trim brings a loud one back under the others.
+  get out() { const st = STATIONS[this.station]; return this.level * LOUD * ((st && st.trim) || 1); }
+  tune(i) { this.station = i; this.step = 0; this.t = 0; this.phrases = new Map(); if (this.on) this.gain.gain.setTargetAtTime(i >= 0 ? this.out : 0, this.ctx.currentTime, 0.1); }
   // Fade in when Christian is driving, out when he is not.
-  play(on) { if (on === this.on) return; this.on = on; this.gain.gain.setTargetAtTime(on && this.station >= 0 ? this.level * LOUD : 0, this.ctx.currentTime, on ? 0.4 : 0.25); if (on) this.t = 0; }
-  setLevel(v) { this.level = v; if (this.on) this.gain.gain.setTargetAtTime(this.station >= 0 ? v * LOUD : 0, this.ctx.currentTime, 0.1); }
+  play(on) { if (on === this.on) return; this.on = on; this.gain.gain.setTargetAtTime(on && this.station >= 0 ? this.out : 0, this.ctx.currentTime, on ? 0.4 : 0.25); if (on) this.t = 0; }
+  setLevel(v) { this.level = v; if (this.on) this.gain.gain.setTargetAtTime(this.station >= 0 ? this.out : 0, this.ctx.currentTime, 0.1); }
   // One note: an oscillator with a quick attack and a fade.
   note(freq, at, dur, vol, type, o = {}) {
     const c = this.ctx, osc = c.createOscillator(), g = c.createGain(); osc.type = type; osc.frequency.setValueAtTime(freq, at);

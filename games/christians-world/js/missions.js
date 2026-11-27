@@ -28,6 +28,7 @@ const LOOK = {
   sam: { shirt: 0xf7f9fb, pants: 0x2b4f8f, hat: 0x27323f, hatStyle: 'wide', stripe: 0x1d3f8f, skin: 0xb9805a },
   rita: { shirt: 0xcfd6dc, pants: 0x39414c, hair: 0xe23b2e, longHair: true, stripe: 0xff7a1a, skin: 0xe9b98f },
   luna: { shirt: 0x8e44ad, pants: 0x27323f, hair: 0x1c1c1f, longHair: true, stripe: 0xffd98a, skin: 0xc98f66 },
+  dee: { shirt: 0x1c1c2a, pants: 0x1c1c2a, hat: 0xffd21f, stripe: 0x1fb7c9, skin: 0xc98f66 },
   cruz: { shirt: 0x1f8a70, pants: 0x27323f, hat: 0xf7f9fb, stripe: 0xf7f9fb, skin: 0x8d5a3c },
 };
 const SHIRTS = [0x2d6cdf, 0xe23b2e, 0x1f8a70, 0xff7a1a, 0x8e44ad, 0xff5fa2, 0x1fb7c9, 0xffd21f];
@@ -504,6 +505,27 @@ export const MISSIONS = [
           onDone: () => { zonkAll(g, grp); g.fireworksT = 6; },
         },
         { type: 'goto', mode: 'foot', x: 372, z: -363, r: 3.4, text: 'Tell Coach Cruz the pitch is safe' },
+      ];
+    },
+  },
+  {
+    id: 'octo', title: 'Octoclank', reward: 800, needs: 'treasure',
+    giver: { name: 'Diver Dee', x: -112, z: 640, look: LOOK.dee },
+    intro: 'I saw it from under the water. Eight legs. Eyes like lamps. It is walking up the sea bed towards this beach right now! When its eyes go red, JUMP, or its cable whip will drag you in. And when it rears up, jump again.',
+    needsText: 'Something big is moving out in the bay. Help Old Salt Sam with his treasure map first. I am still counting its legs.',
+    outro: 'You sent it back into the sea in pieces! This fell off it. An Ink Squirter. One blob and a whole gang of robots cannot see a thing.',
+    steps: (m) => {
+      const g = m.g, grp = band(m), A = { x: -170, z: 640 }; let boss = null;
+      return [
+        { type: 'goto', x: A.x, z: A.z, r: 10, text: 'Go down to the west beach' },
+        {
+          type: 'do', text: 'Stop Octoclank!', hint: 'Jump when its eyes turn red, and when it rears up. Blast it hardest while it is overheating.',
+          onStart: () => { boss = g.bots.spawn('octo', A.x, A.z + 22, { mode: 'boss', home: { x: A.x, z: A.z, r: 40 }, group: grp, h: Math.PI }); g.ui.banner('OCTOCLANK', 'Eight legs. Jump when its eyes turn red.'); g.sound.zonk(true); g.bots.octoSay('hello', 1, true); g.fx.burst(A.x, 0.5, A.z + 22, 40, 9, 1.2, 0.5, 1.4, 1, 1, 1, 0.8, 10, 1.4); },
+          where: () => (boss && !boss.dead ? { x: boss.x, z: boss.z, r: 6, quiet: true } : null), meta: () => (boss ? `${Math.max(0, Math.ceil((boss.hp / boss.k.hp) * 100))}%` : ''),
+          check: () => !!boss && boss.dead, skip: () => zonkAll(g, grp),
+          onDone: () => { zonkAll(g, grp); g.fireworksT = 5; },
+        },
+        { type: 'goto', mode: 'foot', x: -112, z: 643, r: 3.4, text: 'Tell Diver Dee the beach is safe' },
       ];
     },
   },

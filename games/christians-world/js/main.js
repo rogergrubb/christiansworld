@@ -271,7 +271,8 @@ class Game {
   words() { return document.body.classList.contains('touch') ? 'touch' : this.input.padUsed ? 'pad' : 'key'; }
   // A robot has bumped into Christian: he goes flying, sees stars, and is fine.
   bonk(b, nx, nz, power = 1) {
-    const p = this.player; if (p.vehicle) return;
+    const p = this.player; if (p.vehicle || this.time < (this.safeT || 0)) return;
+    this.safeT = this.time + 1.6;   // a moment to get up and away before anything can bonk him again
     p.vx = nx * 8.5 * power; p.vz = nz * 8.5 * power; p.vy = 5.5 * power; p.onGround = false;
     this.dizzy = 0.7; this.cam.shake = Math.max(this.cam.shake, 0.22 * power); this.sound.bonk(); this.input.rumble(0.7, 0.4, 180); this.state.stats.bonks++;
     for (let i = 0; i < 5; i++) { const a = i * 1.257; this.fx.emit(p.pos.x + Math.cos(a) * 0.5, p.pos.y + 2.1, p.pos.z + Math.sin(a) * 0.5, Math.cos(a) * 1.5, 1.2, Math.sin(a) * 1.5, 0.7, 0.22, 0.1, 1, 0.9, 0.3, 1); }

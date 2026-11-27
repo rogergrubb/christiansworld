@@ -36,6 +36,7 @@ export const GEAR = [
   { id: 'zap', icon: '⚡', name: 'Zap Pulse', kind: 'blaster', from: 'drones', use: 'A ring of sparks. Every robot around you drops.', cool: 4.5, radius: 10, dmg: 2, color: 0xffd21f, fx: 'stun' },
   { id: 'laser', icon: '☄️', name: 'Laser Blaster', kind: 'blaster', from: 'lighthouse', use: 'Pew pew pew. Fast, far and dead straight.', rate: 6, speed: 85, grav: 0, spread: 0.004, dmg: 1.5, reach: 70, size: 0.13, color: 0xff2a2a, fx: 'hit', long: 6 },
   { id: 'hammer', icon: '🔨', name: 'Thunder Hammer', kind: 'blaster', from: 'mega', use: 'BOOM. Sends every robot near you flying.', cool: 0.75, radius: 4.6, dmg: 3, color: 0x8e44ad, fx: 'knock', shape: 'hammer' },
+  { id: 'ink', icon: '🐙', name: 'Ink Squirter', kind: 'blaster', from: 'octo', use: 'One big blob of ink. Every robot it splashes cannot see where it is going.', rate: 1.4, speed: 24, grav: 12, spread: 0, dmg: 1, splash: 4, reach: 30, size: 0.4, color: 0x2a2140, fx: 'paint' },
   // Legendary gear is bought, not won: see relics.js for what each one is and how it looks.
   ...RELICS,
 ];
@@ -277,7 +278,7 @@ export class Toolbox {
     const yaw = this.aimDir(it, tgt, d); p.heading += angDiff(yaw, p.heading) * 0.7;
     this.cool = 1 / it.rate;
     const sp = it.spread, mx = p.pos.x + Math.sin(yaw) * 0.6, my = p.pos.y + 1.25, mz = p.pos.z + Math.cos(yaw) * 0.6;
-    const col = it.fx === 'paint' ? PAINTS[(Math.random() * PAINTS.length) | 0] : it.color;
+    const col = it.id === 'paint' ? PAINTS[(Math.random() * PAINTS.length) | 0] : it.color;
     this.shots.fire(it, mx, my, mz, d.x + (Math.random() - 0.5) * sp, d.y + (Math.random() - 0.5) * sp, d.z + (Math.random() - 0.5) * sp, col);
     snd.blast(it.id); if (it.rate < 2) { g.cam.shake = Math.max(g.cam.shake, 0.08); g.input.rumble(0.3, 0.2, 90); }
   }
