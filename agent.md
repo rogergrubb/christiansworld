@@ -48,9 +48,9 @@
 
 ## 9. Open Questions
 - Christian asked for a Venom sword, the Hadron Enforcer and the Time Stick by name. Those are Marvel's; the game has original stand-ins (Midnight Goo Blade, Atom Smasher, Time Baton). More of his ideas are welcome as originals.
-- Roblox version: first build in `roblox/` (place file + three Luau scripts), syntax-checked only, never run in Studio. Items are built from Roblox parts, so they are simpler than the web models; real meshes need a GUI import in Studio.
+- Roblox version: `roblox/` (place file + three Luau scripts). Runs clean in Studio and is published PRIVATE on Playa_Surfer102 as place 90920311552905 with Team Create on. Buying, evolving and saving are not yet play-tested. Items are built from Roblox parts, so they are simpler than the web models; real meshes need a GUI import in Studio.
 
 ## 10. Next Actions
-1. Open `roblox/ChristiansWorldEvolve.rbxlx` in Studio, press Play, fix whatever the Output window reports, then Roger publishes.
+1. Roblox: Roger picks testers (Invite early testers, up to 10 friends) or releases publicly; then play-test buying, evolving and saving. Studio's command bar runs with the Run button, not Enter.
 2. Make the repo private and move hosting to Vercel if Pages stops serving.
 3. More legendary gear, auras and titles if Christian wants them.

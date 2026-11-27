@@ -812,8 +812,8 @@ RunService.Heartbeat:Connect(function(dt)
 					if nd > reach then
 						r.pos = r.pos + Vector3.new(p.X - r.pos.X, 0, p.Z - r.pos.Z).Unit * r.def.speed * step
 					elseif r.bite <= 0 then
-						r.bite = 1.2
-						near.hum:TakeDamage(r.kind == "Mega" and 25 or r.kind == "Brute" and 14 or 8)
+						r.bite = 1.6
+						near.hum:TakeDamage(r.kind == "Mega" and 12 or r.kind == "Brute" and 7 or 4)
 					end
 				else
 					r.turn = r.turn - step
