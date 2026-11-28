@@ -39,7 +39,9 @@ Config.Items = {
 Config.Robots = {
 	Clanker = { hp = 4, coins = 5, xp = 10, speed = 11, size = 1, color = rgb(160, 168, 178), eye = rgb(255, 60, 60) },
 	Brute = { hp = 12, coins = 15, xp = 25, speed = 8, size = 1.5, color = rgb(120, 96, 70), eye = rgb(255, 150, 40) },
-	Mega = { hp = 60, coins = 100, xp = 200, speed = 6, size = 2.6, color = rgb(70, 60, 110), eye = rgb(200, 80, 255) },
+	-- Octoclank: the boss of the beach. heavy: cannot be knocked about or lifted.  bite: what its bump costs.
+	Octo = { hp = 260, coins = 400, xp = 600, speed = 9, size = 3, heavy = true, bite = 8, color = rgb(31, 95, 107), eye = rgb(255, 179, 0) },
+	Mega = { hp = 60, coins = 100, xp = 200, speed = 6, size = 2.6, heavy = true, color = rgb(70, 60, 110), eye = rgb(200, 80, 255) },
 }
 
 -- Three yards to fight in. x: how far east of the plaza each one is.  max: how many robots it keeps alive.
@@ -47,6 +49,20 @@ Config.Arenas = {
 	{ name = "Clanker Yard", x = 150, max = 8, mix = { "Clanker" }, floor = rgb(120, 190, 120) },
 	{ name = "Brute Pit", x = 330, max = 8, mix = { "Clanker", "Brute", "Brute" }, floor = rgb(200, 170, 110) },
 	{ name = "Mega Zone", x = 510, max = 7, mix = { "Brute", "Brute", "Clanker", "Mega" }, floor = rgb(160, 130, 200) },
+	{ name = "Octoclank Beach", x = 690, max = 1, mix = { "Octo" }, floor = rgb(232, 212, 160), rest = 40 },
+}
+
+-- What Octoclank says. It grunts every time (the two numbers are how low and how high the grunt is), and sometimes uses words.
+Config.OctoVoice = { hello = { 0.45, 0.55 }, ow = { 1.3, 1.9 }, taunt = { 0.7, 1.1 }, miss = { 0.55, 0.7 }, caught = { 1.0, 1.4 }, hot = { 0.4, 0.5 }, slam = { 0.35, 0.45 }, bye = { 1.6, 2.0 } }
+Config.OctoLines = {
+	hello = { "BOO! Did I scare you? I practised that all the way up the sea bed.", "Eight legs! Count them! ...Actually don't, I lose count." },
+	ow = { "OW! That was my favourite leg!", "Hey! I JUST polished that!", "Rude!", "Stop it, that tickles!", "Not the face! It's my only one!" },
+	taunt = { "I have EIGHT legs. You have two. Ha!", "Do you know how long it takes to put on eight shoes?", "Who put sand in my sockets?", "I only came up here for an ice cream.", "Left, left, left, left, right, right... no wait.", "Does this beach have a toilet? Asking for a friend.", "My legs keep playing that silly tune. I can't make them stop." },
+	miss = { "Hold still!", "Stop JUMPING! That's cheating!", "Missed? I never miss! ...I missed." },
+	caught = { "Got you! Come here, tiny!", "Wheee! Again! Again!" },
+	hot = { "Too hot! Too hot! Who turned the sea off?", "I need a nap. Eight naps. One for each leg.", "Is something burning? Oh. It's me." },
+	slam = { "BELLY FLOP!", "CANNONBALL!" },
+	bye = { "I'm telling my mum!", "Fine! I didn't even WANT your beach!" },
 }
 
 -- Level L starts at 25 x L x (L - 1) points: 50 for level 2, 500 for level 5, 2250 for level 10.

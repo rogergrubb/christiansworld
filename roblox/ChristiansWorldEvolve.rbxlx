@@ -43,7 +43,9 @@ Config.Items = {
 Config.Robots = {
 	Clanker = { hp = 4, coins = 5, xp = 10, speed = 11, size = 1, color = rgb(160, 168, 178), eye = rgb(255, 60, 60) },
 	Brute = { hp = 12, coins = 15, xp = 25, speed = 8, size = 1.5, color = rgb(120, 96, 70), eye = rgb(255, 150, 40) },
-	Mega = { hp = 60, coins = 100, xp = 200, speed = 6, size = 2.6, color = rgb(70, 60, 110), eye = rgb(200, 80, 255) },
+	-- Octoclank: the boss of the beach. heavy: cannot be knocked about or lifted.  bite: what its bump costs.
+	Octo = { hp = 260, coins = 400, xp = 600, speed = 9, size = 3, heavy = true, bite = 8, color = rgb(31, 95, 107), eye = rgb(255, 179, 0) },
+	Mega = { hp = 60, coins = 100, xp = 200, speed = 6, size = 2.6, heavy = true, color = rgb(70, 60, 110), eye = rgb(200, 80, 255) },
 }
 
 -- Three yards to fight in. x: how far east of the plaza each one is.  max: how many robots it keeps alive.
@@ -51,6 +53,20 @@ Config.Arenas = {
 	{ name = "Clanker Yard", x = 150, max = 8, mix = { "Clanker" }, floor = rgb(120, 190, 120) },
 	{ name = "Brute Pit", x = 330, max = 8, mix = { "Clanker", "Brute", "Brute" }, floor = rgb(200, 170, 110) },
 	{ name = "Mega Zone", x = 510, max = 7, mix = { "Brute", "Brute", "Clanker", "Mega" }, floor = rgb(160, 130, 200) },
+	{ name = "Octoclank Beach", x = 690, max = 1, mix = { "Octo" }, floor = rgb(232, 212, 160), rest = 40 },
+}
+
+-- What Octoclank says. It grunts every time (the two numbers are how low and how high the grunt is), and sometimes uses words.
+Config.OctoVoice = { hello = { 0.45, 0.55 }, ow = { 1.3, 1.9 }, taunt = { 0.7, 1.1 }, miss = { 0.55, 0.7 }, caught = { 1.0, 1.4 }, hot = { 0.4, 0.5 }, slam = { 0.35, 0.45 }, bye = { 1.6, 2.0 } }
+Config.OctoLines = {
+	hello = { "BOO! Did I scare you? I practised that all the way up the sea bed.", "Eight legs! Count them! ...Actually don't, I lose count." },
+	ow = { "OW! That was my favourite leg!", "Hey! I JUST polished that!", "Rude!", "Stop it, that tickles!", "Not the face! It's my only one!" },
+	taunt = { "I have EIGHT legs. You have two. Ha!", "Do you know how long it takes to put on eight shoes?", "Who put sand in my sockets?", "I only came up here for an ice cream.", "Left, left, left, left, right, right... no wait.", "Does this beach have a toilet? Asking for a friend.", "My legs keep playing that silly tune. I can't make them stop." },
+	miss = { "Hold still!", "Stop JUMPING! That's cheating!", "Missed? I never miss! ...I missed." },
+	caught = { "Got you! Come here, tiny!", "Wheee! Again! Again!" },
+	hot = { "Too hot! Too hot! Who turned the sea off?", "I need a nap. Eight naps. One for each leg.", "Is something burning? Oh. It's me." },
+	slam = { "BELLY FLOP!", "CANNONBALL!" },
+	bye = { "I'm telling my mum!", "Fine! I didn't even WANT your beach!" },
 }
 
 -- Level L starts at 25 x L x (L - 1) points: 50 for level 2, 500 for level 5, 2250 for level 10.
@@ -82,6 +98,7 @@ local function remote(name)
 	return r
 end
 local EvolveEvent, WearEvent, NotifyEvent, OpenEvent = remote("Evolve"), remote("Wear"), remote("Notify"), remote("OpenEvolve")
+local YankEvent = remote("Yank")   -- throws a player: the server says which way, the player's own game does it
 Remotes.Parent = ReplicatedStorage
 
 local rgb = Color3.fromRGB
@@ -343,6 +360,14 @@ ground.Name = "Ground"
 ground.Parent = World
 newPart(Vector3.new(110, 0.4, 110), CFrame.new(0, 0.2, 0), rgb(214, 208, 196), Enum.Material.Concrete).Parent = World
 newPart(Vector3.new(560, 0.3, 18), CFrame.new(330, 0.15, 0), rgb(70, 74, 82), Enum.Material.Asphalt).Parent = World
+-- the beach at the far end, and the sea Octoclank walks out of
+newPart(Vector3.new(200, 4, 420), CFrame.new(820, -2, 0), rgb(232, 212, 160), Enum.Material.Sand).Parent = World
+do
+	local sea = newPart(Vector3.new(260, 0.6, 150), CFrame.new(720, 0.3, 135), rgb(40, 150, 210), Enum.Material.Glass)
+	sea.Transparency = 0.35
+	sea.CanCollide = false
+	sea.Parent = World
+end
 
 local spawn = Instance.new("SpawnLocation")
 spawn.Anchored = true
@@ -610,24 +635,312 @@ local function buildRobot(kind, def)
 	return m, fill
 end
 
-local function spawnRobot(arena)
-	local kind = arena.mix[rand:NextInteger(1, #arena.mix)]
+---------------------------------------------------------------- Octoclank: eight legs, a cable whip, and far too much to say
+local OCTO_REACH, OCTO_HIP, OCTO_BODY = 13, 4.6, 9.5
+local NOTES = { 1, 1.122, 1.26, 1.498, 1.682, 2, 2.245, 2.52 }   -- one note for each leg, so its walk is a tune
+local stepSoundAt = 0
+
+-- It grunts, and now and then it says something. chance: how often it bothers with words.
+local function octoSay(r, kind, chance, force)
+	if r.dead then return false end
+	if not force and os.clock() < r.sayAt then return false end
+	r.sayAt = os.clock() + 3.2
+	local voice = Config.OctoVoice[kind]
+	sound(r.model.PrimaryPart, "rbxasset://sounds/uuhhh.wav", rand:NextNumber(voice[1], voice[2]))
+	if rand:NextNumber() > (chance or 1) then return true end
+	local lines = Config.OctoLines[kind]
+	local line = lines[rand:NextInteger(1, #lines)]
+	if line == r.lastLine then line = lines[(table.find(lines, line) % #lines) + 1] end
+	r.lastLine = line
+	r.speech.Text = line
+	r.speechGui.Enabled = true
+	r.speechAt = os.clock() + 2.8
+	return true
+end
+
+local function octoBye(r)
+	local lines = Config.OctoLines.bye
+	NotifyEvent:FireAllClients('Octoclank: "' .. lines[rand:NextInteger(1, #lines)] .. '"')
+	Debris:AddItem(r.octo.folder, 0.05)
+	r.arena.restAt = os.clock() + (r.arena.rest or 40)
+end
+
+local function buildOcto(def)
+	local m = Instance.new("Model")
+	m.Name = "Octoclank"
+	local V = Vector3.new
+	local y = OCTO_BODY
+	local shell2, dark, black, brass, rust, warn = rgb(23, 74, 85), rgb(57, 65, 76), rgb(27, 36, 48), rgb(201, 162, 74), rgb(181, 101, 29), rgb(255, 210, 31)
+	local function add(size, at, color, material, shape, turn)
+		local p = newPart(size, CFrame.new(at) * (turn or CFrame.new()), color, material or Enum.Material.Metal, shape)
+		p.CanCollide = false
+		p.Parent = m
+		return p
+	end
+	-- the front is -Z, like every robot
+	local head = add(V(11, 11, 11), V(0, y, 0), def.color, nil, Enum.PartType.Ball)
+	head.PivotOffset = CFrame.new(0, -y, 0)   -- the model turns and moves about the ground under it
+	m.PrimaryPart = head
+	add(V(10, 10, 10), V(0, y + 1.6, 6), shell2, nil, Enum.PartType.Ball)            -- the mantle behind the head
+	add(V(6.5, 6.5, 6.5), V(0, y + 2.6, 11.5), def.color, nil, Enum.PartType.Ball)
+	add(V(2.2, 12.6, 12.6), V(0, y - 4.6, 0), dark, nil, Enum.PartType.Cylinder, UP)  -- the collar the legs hang from
+	add(V(0.6, 12.9, 12.9), V(0, y - 3.6, 0), warn, Enum.Material.SmoothPlastic, Enum.PartType.Cylinder, UP)
+	add(V(1.6, 8.5, 8.5), V(0, y - 6.2, 0), black, nil, Enum.PartType.Cylinder, UP)
+	local eyes = {}
+	for _, x in ipairs({ -1, 1 }) do
+		add(V(3.6, 3.6, 3.6), V(x * 2.7, y + 0.9, -4.1), black, nil, Enum.PartType.Ball)              -- sockets
+		table.insert(eyes, add(V(2.7, 2.7, 2.7), V(x * 2.7, y + 0.9, -4.75), def.eye, Enum.Material.Neon, Enum.PartType.Ball))
+		add(V(0.9, 1.3, 0.9), V(x * 2.7, y + 0.9, -5.9), black, Enum.Material.SmoothPlastic, Enum.PartType.Ball)   -- pupils
+		add(V(3.8, 0.7, 2), V(x * 2.7, y + 3.1, -4.6), dark, nil, nil, CFrame.Angles(0, 0, x * 0.28))     -- heavy brows
+		add(V(4.4, 1.5, 1.5), V(x * 3.6, y + 7.4, 3.2), dark, nil, Enum.PartType.Cylinder, UP)          -- exhaust stacks
+		add(V(0.5, 1.9, 1.9), V(x * 3.6, y + 9.7, 3.2), black, nil, Enum.PartType.Cylinder, UP)
+		add(V(2.6, 2.6, 2.6), V(x * 5.4, y - 0.6, 1.6), rust, nil, Enum.PartType.Ball)                  -- pressure tanks
+		add(V(7, 1, 1), V(x * 5, y + 0.8, 6), brass, nil, Enum.PartType.Cylinder, FWD)                  -- side pipes
+	end
+	add(V(4.4, 1.3, 0.8), V(0, y - 2.3, -5.1), black)                                                  -- grille mouth
+	for i = -2, 2 do add(V(0.3, 1.1, 0.3), V(i * 0.85, y - 2.3, -5.5), warn, Enum.Material.SmoothPlastic) end
+	for i = 0, 4 do add(V(0.8, 2.4 - i * 0.3, 1.7), V(0, y + 6.3 - i * 0.25 + math.sin(i * 0.7) * 0.6, 1 + i * 2.4), rust) end   -- back fins
+	add(V(0.3, 3.4, 0.3), V(0, y + 6.6, -1.4), dark)                                                   -- aerial
+	add(V(0.9, 0.9, 0.9), V(0, y + 8.5, -1.4), warn, Enum.Material.Neon, Enum.PartType.Ball)
+
+	local bar = Instance.new("BillboardGui")
+	bar.Size = UDim2.new(16, 0, 1.2, 0)
+	bar.StudsOffset = Vector3.new(0, 11, 0)
+	bar.Adornee = head
+	bar.MaxDistance = 220
+	bar.Parent = head
+	local back = Instance.new("Frame")
+	back.Size = UDim2.new(1, 0, 1, 0)
+	back.BackgroundColor3 = rgb(20, 20, 26)
+	back.BorderSizePixel = 0
+	back.Parent = bar
+	local fill = Instance.new("Frame")
+	fill.Name = "Fill"
+	fill.Size = UDim2.new(1, 0, 1, 0)
+	fill.BackgroundColor3 = rgb(255, 179, 0)
+	fill.BorderSizePixel = 0
+	fill.Parent = back
+	local speech = billboard(head, "", 15, rgb(255, 255, 255))
+	speech.Parent.Size = UDim2.new(40, 0, 5, 0)
+	speech.Parent.MaxDistance = 220
+	speech.Parent.Enabled = false
+
+	-- the legs are loose parts, moved every frame: three pieces, two joints and a foot each
+	local folder = Instance.new("Folder")
+	folder.Name = "OctoclankLegs"
+	folder.Parent = workspace
+	local function loose(size, color, material, shape)
+		local p = newPart(size, CFrame.new(0, -60, 0), color, material or Enum.Material.Metal, shape)
+		p.CanCollide = false
+		p.CanQuery = false
+		p.CanTouch = false
+		p.Parent = folder
+		return p
+	end
+	local legs = {}
+	for i = 1, 8 do
+		legs[i] = {
+			segs = { loose(V(1.6, 1.6, 1), def.color), loose(V(1.2, 1.2, 1), shell2), loose(V(0.85, 0.85, 1), def.color) },
+			joints = { loose(V(2, 2, 2), brass, nil, Enum.PartType.Ball), loose(V(1.5, 1.5, 1.5), brass, nil, Enum.PartType.Ball) },
+			pad = loose(V(2.3, 2.3, 2.3), warn, Enum.Material.SmoothPlastic, Enum.PartType.Ball),
+			at = V(0, 0, 0), from = V(0, 0, 0), to = V(0, 0, 0), t = 1,
+		}
+	end
+	return m, fill, { legs = legs, folder = folder, eyes = eyes, speech = speech }
+end
+
+-- kind and at: which robot and where. Left out, the yard picks.
+local function spawnRobot(arena, kind, at)
+	kind = kind or arena.mix[rand:NextInteger(1, #arena.mix)]
 	local def = Config.Robots[kind]
-	local m, fill = buildRobot(kind, def)
+	local m, fill, octo
+	if kind == "Octo" then m, fill, octo = buildOcto(def) else m, fill = buildRobot(kind, def) end
 	local half = ARENA / 2 - 10
 	local r = {
 		model = m, fill = fill, kind = kind, def = def, hp = def.hp, arena = arena,
-		pos = Vector3.new(arena.x + rand:NextNumber(-half, half), 0.4, rand:NextNumber(-half, half)),
+		pos = at or Vector3.new(arena.x + rand:NextNumber(-half, half), 0.4, rand:NextNumber(-half, half)),
 		heading = rand:NextNumber(0, math.pi * 2), vel = Vector3.new(0, 0, 0), stun = 0, lift = 0, bite = 0, turn = 0,
 	}
+	if octo then
+		-- it walks up out of the sea, which is on the +Z side of the beach
+		r.pos = Vector3.new(arena.x, 0.4, half)
+		r.heading = 0
+		r.octo, r.speech, r.speechGui = octo, octo.speech, octo.speech.Parent
+		r.sayAt, r.speechAt, r.phase, r.pt, r.next, r.bodyY = 0, 0, "walk", 0, 2 / 3, 0
+		r.slamT, r.whip, r.reelT, r.helpT, r.tauntT = 6, 0, 4, 12, 5
+		for i, leg in ipairs(octo.legs) do
+			local a = (i - 0.5) / 8 * math.pi * 2
+			leg.at = r.pos + Vector3.new(math.sin(a), 0, math.cos(a)) * OCTO_REACH
+		end
+		NotifyEvent:FireAllClients("Octoclank is walking up the beach!")
+		task.delay(0.6, octoSay, r, "hello", 1, true)
+	end
 	m:PivotTo(CFrame.new(r.pos) * CFrame.Angles(0, r.heading, 0))
 	m.Parent = workspace
 	table.insert(robots, r)
+	return r
+end
+
+-- What Octoclank does besides walking at people: overheat, belly-flop, whip, call for help and talk.
+local function octoThink(r, step, roots)
+	local now = os.clock()
+	if r.speechGui.Enabled and now > r.speechAt then r.speechGui.Enabled = false end
+	local eye = r.phase == "down" and (math.sin(now * 22) > 0 and rgb(90, 60, 0) or r.def.eye) or r.whip > 0 and rgb(255, 40, 40) or r.def.eye
+	for _, e in ipairs(r.octo.eyes) do e.Color = eye end
+
+	if r.hp / r.def.hp < r.next and r.phase ~= "down" then
+		r.next = r.next - 1 / 3
+		r.phase, r.pt, r.whip = "down", 4.5, 0
+		NotifyEvent:FireAllClients("Octoclank is overheating. Hit it now!")
+		octoSay(r, "hot", 1, true)
+	end
+	if r.phase == "down" then
+		r.pt = r.pt - step
+		r.stun = math.max(r.stun, 0.2)
+		r.bodyY = -4.5
+		if r.pt <= 0 then r.phase, r.bodyY, r.slamT = "walk", 0, 4 end
+		return
+	end
+	if r.phase == "rise" then
+		r.pt = r.pt - step
+		r.stun = math.max(r.stun, 0.2)
+		r.bodyY = math.min(5, r.bodyY + step * 8)
+		if r.pt <= 0 then
+			-- the belly flop: everyone standing close goes flying. Being in the air dodges it.
+			r.phase, r.bodyY, r.slamT = "walk", 0, rand:NextNumber(6, 8)
+			ringFx(Vector3.new(r.pos.X, 0.8, r.pos.Z), 36, rgb(255, 240, 200))
+			sound(r.model.PrimaryPart, "rbxasset://sounds/collide.wav", 0.45)
+			octoSay(r, "slam", 0.7, true)
+			for _, pr in ipairs(roots) do
+				local p = pr.root.Position
+				local away = Vector3.new(p.X - r.pos.X, 0, p.Z - r.pos.Z)
+				if away.Magnitude < 36 and pr.hum.FloorMaterial ~= Enum.Material.Air then
+					pr.hum:TakeDamage(10)
+					YankEvent:FireClient(pr.player, (away.Magnitude > 0.1 and away.Unit or Vector3.new(1, 0, 0)) * 70 + Vector3.new(0, 60, 0))
+				end
+			end
+		end
+		return
+	end
+	if r.stun > 0 then return end
+
+	local near, nd = nil, 200
+	for _, pr in ipairs(roots) do
+		local p = pr.root.Position
+		if math.abs(p.X - r.arena.x) < ARENA / 2 + 6 and math.abs(p.Z) < ARENA / 2 + 6 then
+			local dd = Vector3.new(p.X - r.pos.X, 0, p.Z - r.pos.Z).Magnitude
+			if dd < nd then near, nd = pr, dd end
+		end
+	end
+	if not near then r.whip = 0 return end
+
+	r.slamT = r.slamT - step
+	if r.slamT <= 0 and nd < 30 then r.phase, r.pt, r.whip = "rise", 0.9, 0 return end
+
+	-- the cable whip: its eyes turn red, one leg rears back, then it lashes out and drags the nearest player in
+	if r.whip > 0 then
+		r.whip = r.whip - step
+		if r.whip <= 0 then
+			r.whip, r.reelT = 0, 6.5
+			sound(r.model.PrimaryPart, "rbxasset://sounds/swoosh.wav", 0.7)
+			local p = near.root.Position
+			local to = Vector3.new(r.pos.X - p.X, 0, r.pos.Z - p.Z)
+			if nd < 90 and near.hum.FloorMaterial ~= Enum.Material.Air then
+				near.hum:TakeDamage(4)
+				YankEvent:FireClient(near.player, to.Unit * 95 + Vector3.new(0, 40, 0))
+				tracer(Vector3.new(r.pos.X, OCTO_BODY, r.pos.Z), p, rgb(255, 210, 31), 0.8)
+				octoSay(r, "caught", 1, true)
+			else
+				octoSay(r, "miss", 0.8)
+			end
+		end
+	else
+		r.reelT = r.reelT - step
+		if r.reelT <= 0 and nd > 24 and nd < 80 then
+			r.whip = 0.9
+			sound(r.model.PrimaryPart, "rbxasset://sounds/electronicpingshort.wav", 0.5)
+		end
+	end
+
+	r.helpT = r.helpT - step
+	if r.helpT <= 0 then
+		r.helpT = 14
+		local n = 0
+		for _, o in ipairs(robots) do if not o.dead and o.arena == r.arena and not o.octo then n = n + 1 end end
+		if n < 4 then
+			local side = Vector3.new(math.cos(r.heading), 0, -math.sin(r.heading))
+			for _, s in ipairs({ -1, 1 }) do spawnRobot(r.arena, "Clanker", r.pos + side * (s * 16)) end
+		end
+	end
+
+	r.tauntT = r.tauntT - step
+	if r.tauntT <= 0 and octoSay(r, "taunt") then r.tauntT = rand:NextNumber(7, 11) end
+end
+
+-- The legs, every frame. Each foot stays planted until the body has walked away from it, then steps; never two neighbours at once.
+local function octoLegs(r, dt)
+	local o, now = r.octo, os.clock()
+	local down, rise, held = r.phase == "down", r.phase == "rise", r.stun > 0 and r.phase == "walk"
+	local reach = down and OCTO_REACH + 4 or OCTO_REACH
+	local hipY = OCTO_BODY + r.bodyY - 4.2
+	local fwd = Vector3.new(-math.sin(r.heading), 0, -math.cos(r.heading))
+	for i, leg in ipairs(o.legs) do
+		local a = r.heading + (i - 0.5) / 8 * math.pi * 2
+		local dir = Vector3.new(math.sin(a), 0, math.cos(a))
+		local ideal = r.pos + dir * reach
+		local lift = 0
+		if leg.t >= 1 then
+			local off = (Vector3.new(leg.at.X - ideal.X, 0, leg.at.Z - ideal.Z)).Magnitude
+			local busy = o.legs[i % 8 + 1].t < 1 or o.legs[(i + 6) % 8 + 1].t < 1
+			if not held and (off > 11 or (off > 4.2 and not busy)) then
+				leg.from, leg.to, leg.t = leg.at, ideal + (ideal - leg.at) * 0.35, 0
+			end
+		else
+			leg.t = math.min(1, leg.t + dt / 0.22)
+			local e = leg.t * leg.t * (3 - 2 * leg.t)
+			leg.at = leg.from:Lerp(leg.to, e)
+			lift = math.sin(leg.t * math.pi) * 4
+			if leg.t >= 1 and now - stepSoundAt > 0.05 then
+				stepSoundAt = now
+				local s = Instance.new("Sound")   -- a pipe note for this leg, and a squelch
+				s.SoundId = "rbxasset://sounds/electronicpingshort.wav"
+				s.Volume = 0.35
+				s.PlaybackSpeed = NOTES[i] * 0.7
+				s.RollOffMaxDistance = 160
+				s.Parent = leg.pad
+				s:Play()
+				Debris:AddItem(s, 1.5)
+			end
+		end
+		local foot = Vector3.new(leg.at.X, 1.5 + lift, leg.at.Z)
+		if r.whip > 0 and i == 1 then
+			local k = math.min(1, (0.9 - r.whip) * 3)
+			foot = r.pos + fwd * (7 - k * 11) + Vector3.new(0, OCTO_BODY + 7 + k * 8 + math.sin(now * 30) * 0.5, 0)
+		elseif rise and i % 2 == 0 then
+			foot = foot + Vector3.new(0, r.bodyY * 1.6, 0)
+		end
+		local hip = Vector3.new(r.pos.X, hipY, r.pos.Z) + dir * OCTO_HIP
+		local k1 = hip + dir * 4.5 + Vector3.new(0, (down and 0.5 or 5) + math.sin(now * 3 + i * 1.9) * 0.5, 0)
+		local k2 = hip:Lerp(foot, 0.68) + dir * 1.2 + Vector3.new(0, down and 0.5 or 3.4, 0)
+		local pts = { hip, k1, k2, foot }
+		for k = 1, 3 do
+			local p, q, seg = pts[k], pts[k + 1], leg.segs[k]
+			local len = (q - p).Magnitude
+			if len > 0.05 then
+				seg.Size = Vector3.new(seg.Size.X, seg.Size.Y, len)
+				seg.CFrame = CFrame.lookAt((p + q) / 2, q)
+			end
+		end
+		leg.joints[1].Position = k1
+		leg.joints[2].Position = k2
+		leg.pad.Position = foot
+	end
 end
 
 local function zonk(r, player)
 	if r.dead then return end
 	r.dead = true
+	if r.octo then octoBye(r) end
 	local mid = r.pos + Vector3.new(0, 3 * r.def.size, 0)
 	sound(boom(mid, 5 * r.def.size, rgb(255, 215, 80)), "rbxasset://sounds/collide.wav", 0.8)
 	Debris:AddItem(r.model, 0.05)
@@ -639,23 +952,27 @@ local function zonk(r, player)
 		d.wins = d.wins + 1
 		gainXP(player, r.def.xp)
 		sync(player)
-		if r.kind == "Mega" then note(player, "Mega robot stopped!  +" .. coins .. " coins") end
+		if r.kind == "Octo" then
+			NotifyEvent:FireAllClients(player.DisplayName .. " stopped Octoclank!  +" .. coins .. " coins")
+		elseif r.kind == "Mega" then note(player, "Mega robot stopped!  +" .. coins .. " coins") end
 	end
 end
 
 local function hit(r, dmg, fx, player, from, item)
 	if r.dead then return end
 	local f = player and formOf(player) or Config.Forms[1]
-	if fx == "knock" and r.kind ~= "Mega" then
+	if fx == "knock" and not r.def.heavy then
 		local away = Vector3.new(r.pos.X - from.X, 0, r.pos.Z - from.Z)
 		if away.Magnitude < 0.1 then away = Vector3.new(1, 0, 0) end
 		r.vel = away.Unit * 70
 	elseif fx == "stun" then
-		r.stun = math.max(r.stun, r.kind == "Mega" and 1.4 or (item.stun or 3))
-	elseif fx == "lift" and r.kind ~= "Mega" then
+		r.stun = math.max(r.stun, r.def.heavy and 1.4 or (item.stun or 3))
+	elseif fx == "lift" and not r.def.heavy then
 		r.lift = 3
 	end
+	if r.octo and r.phase == "down" then dmg = dmg * 2 end   -- overheating: every hit counts double
 	r.hp = r.hp - dmg * f.dmg
+	if r.octo and dmg > 0 and r.hp > 0 then octoSay(r, "ow", 0.3) end
 	r.fill.Size = UDim2.new(math.clamp(r.hp / r.def.hp, 0, 1), 0, 1, 0)
 	if r.hp <= 0 then zonk(r, player) end
 end
@@ -820,6 +1137,13 @@ WearEvent.OnServerEvent:Connect(function(player, index)
 	dress(player)
 end)
 
+---------------------------------------------------------------- Octoclank's legs move every frame, so they look smooth
+RunService.Heartbeat:Connect(function(dt)
+	for _, r in ipairs(robots) do
+		if r.octo and not r.dead then octoLegs(r, dt) end
+	end
+end)
+
 ---------------------------------------------------------------- the loop: robots think 15 times a second
 local acc, spin, saveT = 0, 0, 0
 RunService.Heartbeat:Connect(function(dt)
@@ -840,7 +1164,7 @@ RunService.Heartbeat:Connect(function(dt)
 		local char = p.Character
 		local root = char and char:FindFirstChild("HumanoidRootPart")
 		local hum = char and char:FindFirstChildOfClass("Humanoid")
-		if root and hum and hum.Health > 0 then table.insert(roots, { root = root, hum = hum }) end
+		if root and hum and hum.Health > 0 then table.insert(roots, { root = root, hum = hum, player = p }) end
 	end
 
 	local count = {}
@@ -849,11 +1173,12 @@ RunService.Heartbeat:Connect(function(dt)
 		if r.dead then
 			table.remove(robots, i)
 		else
-			count[r.arena] = (count[r.arena] or 0) + 1
+			if r.octo or not r.arena.rest then count[r.arena] = (count[r.arena] or 0) + 1 end   -- on the beach only Octoclank itself counts, not its helpers
 			local half = ARENA / 2 - 4
 			local y = 0.4
 			r.stun = math.max(0, r.stun - step)
 			r.bite = math.max(0, r.bite - step)
+			if r.octo then octoThink(r, step, roots) end
 			if r.lift > 0 then
 				r.lift = r.lift - step
 				y = 0.4 + 7 * math.sin(math.clamp(r.lift / 3, 0, 1) * math.pi)
@@ -875,7 +1200,7 @@ RunService.Heartbeat:Connect(function(dt)
 						r.pos = r.pos + Vector3.new(p.X - r.pos.X, 0, p.Z - r.pos.Z).Unit * r.def.speed * step
 					elseif r.bite <= 0 then
 						r.bite = 1.6
-						near.hum:TakeDamage(r.kind == "Mega" and 12 or r.kind == "Brute" and 7 or 4)
+						near.hum:TakeDamage(r.def.bite or (r.kind == "Mega" and 12 or r.kind == "Brute" and 7 or 4))
 					end
 				else
 					r.turn = r.turn - step
@@ -889,13 +1214,14 @@ RunService.Heartbeat:Connect(function(dt)
 			r.pos = r.pos + r.vel * step
 			r.vel = r.vel * 0.8
 			r.pos = Vector3.new(math.clamp(r.pos.X, r.arena.x - half, r.arena.x + half), 0.4, math.clamp(r.pos.Z, -half, half))
+			if r.octo then y = y + r.bodyY end
 			local wobble = r.stun > 0 and CFrame.Angles(0, 0, math.sin(spin * 20) * 0.08) or CFrame.Angles(0, 0, 0)
 			r.model:PivotTo(CFrame.new(r.pos.X, y, r.pos.Z) * CFrame.Angles(0, r.heading, 0) * wobble)
 		end
 	end
 
 	for _, a in ipairs(Config.Arenas) do
-		if (count[a] or 0) < a.max and rand:NextNumber() < step * 1.2 then spawnRobot(a) end
+		if (count[a] or 0) < a.max and os.clock() > (a.restAt or 0) and rand:NextNumber() < step * 1.2 then spawnRobot(a) end
 	end
 
 	if saveT > 90 then
@@ -1063,6 +1389,13 @@ Remotes.Notify.OnClientEvent:Connect(function(message)
 end)
 
 for _, name in ipairs({ "XP", "Wins", "Tier", "Wear", "Coins" }) do player:GetAttributeChangedSignal(name):Connect(refresh) end
+-- Octoclank's whip and belly flop: the server says which way, and this throws the player
+Remotes:WaitForChild("Yank").OnClientEvent:Connect(function(push)
+	local char = player.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if root and typeof(push) == "Vector3" then root.AssemblyLinearVelocity = push end
+end)
+
 gui.Parent = player:WaitForChild("PlayerGui")
 refresh()
 ]]></ProtectedString></Properties></Item>

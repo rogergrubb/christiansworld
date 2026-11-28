@@ -155,5 +155,12 @@ Remotes.Notify.OnClientEvent:Connect(function(message)
 end)
 
 for _, name in ipairs({ "XP", "Wins", "Tier", "Wear", "Coins" }) do player:GetAttributeChangedSignal(name):Connect(refresh) end
+-- Octoclank's whip and belly flop: the server says which way, and this throws the player
+Remotes:WaitForChild("Yank").OnClientEvent:Connect(function(push)
+	local char = player.Character
+	local root = char and char:FindFirstChild("HumanoidRootPart")
+	if root and typeof(push) == "Vector3" then root.AssemblyLinearVelocity = push end
+end)
+
 gui.Parent = player:WaitForChild("PlayerGui")
 refresh()

@@ -15,3 +15,5 @@ Status (2026-11-26): runs clean in Studio (no Output errors; world, shop, HUD, r
 Published and now PUBLIC (ages 16+ only, rated Mild) as "Christian's World: Evolve" on account Playa_Surfer102, place id 90920311552905:
 https://www.roblox.com/games/90920311552905
 Not yet tried in play: buying items, evolving, saving.
+
+Octoclank (2026-11-27): a fourth yard, Octoclank Beach, at the far end of the road. One boss with eight walking legs (loose parts moved every frame), a cable whip (eyes turn red, jump to dodge), a belly flop, two overheats (double damage), Clanker helpers, grunts and about 25 lines in a speech bubble. It comes back 40 seconds after it is stopped. Numbers and lines are in `Config.lua` (`Robots.Octo`, `OctoLines`). The scripts compile as Luau; NOT yet run in Studio or published.
